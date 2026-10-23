@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Props preview — Dev 07</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1c1a17; color: #f4efe4; font-family: Georgia, "Times New Roman", serif; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #status {
+      position: fixed; left: 16px; bottom: 16px; margin: 0;
+      padding: 8px 12px; background: rgba(20, 16, 12, 0.72); border-radius: 6px;
+      font-size: 14px; line-height: 1.4; max-width: 52ch; z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <p id="status">Loading room + 22 props…</p>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/room.js"></script>
+  <script src="js/space.js"></script>
+  <script src="js/props.js"></script>
+  <script>
+    (function () {
+      var LOADER_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+      var UTILS_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js";
+      var status = document.getElementById("status");
+      var canvas = document.getElementById("view");
+      var view = null;
+
+      function importedNames(source) {
+        var found = {};
+        var match = source.match(/import\s*\{([\s\S]*?)\}\s*from\s*['"]three['"]/);
+        var parts;
+        var i;
+        var piece;
+        var bits;
+        if (!match) return found;
+        parts = match[1].split(",");
+        for (i = 0; i < parts.length; i++) {
+          piece = parts[i].replace(/\/\*[\s\S]*?\*\//g, "").trim();
+          if (!piece) continue;
+          bits = piece.split(/\s+as\s+/);
+          found[bits[bits.length - 1].trim()] = bits[0].trim();
+        }
+        return found;
+      }
+
+      function bridgeThree(names) {
+        var lines = ["const THREE = window.THREE;"];
+        var local;
+        for (local in names) {
+          if (Object.prototype.hasOwnProperty.call(names, local)) {
+            lines.push("export const " + local + " = THREE." + names[local] + ";");
+          }
+        }
+        return URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/javascript" }));
+      }
+
+      function installLoader() {
+        return Promise.all([
+          fetch(LOADER_URL).then(function (res) { if (!res.ok) throw new Error("GLTFLoader"); return res.text(); }),
+          fetch(UTILS_URL).then(function (res) { if (!res.ok) throw new Error("BufferGeometryUtils"); return res.text(); })
+        ]).then(function (files) {
+          var names = importedNames(files[0]);
+          var utilsNames = importedNames(files[1]);
+          var key;
+          for (key in utilsNames) names[key] = utilsNames[key];
+          var threeUrl = bridgeThree(names);
+          var utilsSource = files[1].replace(/from\s*['"]three['"]/, "from " + JSON.stringify(threeUrl));
+          var utilsUrl = URL.createObjectURL(new Blob([utilsSource], { type: "text/javascript" }));
+          var loaderSource = files[0]
+            .replace(/from\s*['"]three['"]/, "from " + JSON.stringify(threeUrl))
+            .replace(/from\s*['"]\.\.\/utils\/BufferGeometryUtils\.js['"]/, "from " + JSON.stringify(utilsUrl));
+          var loaderUrl = URL.createObjectURL(new Blob([loaderSource], { type: "text/javascript" }));
+          return import(loaderUrl).then(function (mod) {
+            window.THREE.GLTFLoader = mod.GLTFLoader;
+          });
+        });
+      }
+
+      function frame() {
+        if (view) view.renderer.render(view.scene, view.camera);
+        requestAnimationFrame(frame);
+      }
+
+      installLoader().then(function () {
+        view = CLASSROOM.scene.mount(canvas); window.__view = view;
+        window.addEventListener("resize", function () { view.resize(); });
+        return CLASSROOM.room.load(view.scene);
+      }).then(function (anchors) {
+        anchors.picks = {
+          prize: "trophy",
+          noise: "squeaky",
+          blast: "popper",
+          activity: "board",
+          string: "desk"
+        };
+        anchors.cushionCount = 6;
+        anchors.whoopeeIndexes = [0, 2, 5];
+        return CLASSROOM.props.load(view.scene, anchors);
+      }).then(function (result) {
+        status.textContent =
+          "Props ready — " + result.count + " named, " + result.whoopees +
+          " whoopees hidden at [" + result.hiddenWhoopees.join(", ") + "]. " +
+          "Phase A stays for B. Labels where no mesh.";
+        console.log("props result", result);
+        console.log("props viewModel", CLASSROOM.props.viewModel());
+        frame();
+      }).catch(function (err) {
+        status.textContent = "Props load failed: " + (err && err.message ? err.message : err);
+        console.error(err);
+      });
+    })();
+  </script>
+</body>
+</html>

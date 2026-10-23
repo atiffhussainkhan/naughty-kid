@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Host UI harness</title>
+  <link rel="stylesheet" href="js/host-ui.css">
+  <style>
+    html, body { margin: 0; height: 100%; }
+    .classroom-stage {
+      background:
+        radial-gradient(ellipse at 30% 40%, #3a4a62 0%, transparent 55%),
+        linear-gradient(160deg, #2a2620, #141311);
+    }
+    .classroom-stage::after {
+      content: "3D stage";
+      position: absolute;
+      left: 1rem;
+      bottom: 1rem;
+      color: #f4efe4;
+      font: 16px/1.3 ui-sans-serif, system-ui, sans-serif;
+      opacity: 0.7;
+    }
+    #log {
+      position: fixed;
+      left: 0.75rem;
+      bottom: 0.75rem;
+      max-width: 40%;
+      margin: 0;
+      padding: 0.4rem 0.55rem;
+      color: #f4efe4;
+      background: rgba(0, 0, 0, 0.45);
+      font: 12px/1.35 ui-monospace, monospace;
+      z-index: 3;
+    }
+  </style>
+</head>
+<body>
+  <div class="classroom-shell" id="shell">
+    <div class="classroom-stage" id="stage" aria-label="3D stage"></div>
+  </div>
+  <pre id="log"></pre>
+  <script src="../../game-slices/07-options/module.js"></script>
+  <script src="../../game-slices/08-cues/module.js"></script>
+  <script src="js/host-ui.js"></script>
+  <script>
+    var state = { beat: 0, phase: null, picks: null, picksLocked: false, setup: "session" };
+    var log = document.getElementById("log");
+
+    function note(line) {
+      log.textContent = line;
+    }
+
+    function dispatch(action) {
+      var payload = (action && action.payload) || {};
+      if (action.type === "lockPicks") {
+        state.picks = payload;
+        state.picksLocked = true;
+        state.beat = 0;
+        state.phase = null;
+        note("locked · beat still 0");
+        return;
+      }
+      if (action.type === "hostSetup") {
+        state.setup = payload.setup || state.setup;
+        note("setup " + state.setup);
+        return;
+      }
+      if (action.type === "startPhaseA") {
+        if (!state.picksLocked) {
+          note("refused: lock picks first");
+          return;
+        }
+        state.phase = "A";
+        state.beat = 1;
+        state.teacher = "asleep";
+        note("Phase A · beat 1");
+        return;
+      }
+      if (action.type === "hostStir") { state.teacher = "stirring"; }
+      if (action.type === "hostWake") { state.teacher = "awake"; }
+      if (action.type === "hostEyes") { state.teacher = "eyes"; }
+      if (action.type === "hostSleep") { state.teacher = "asleep"; }
+      if (action.type === "beat1Step") { state.beat = 2; state.teacher = "asleep"; }
+      if (action.type === "beat2Throw") { state.teacher = "laughing"; }
+      if (action.type === "beat2LaughEnd") { state.teacher = "asleep"; state.beat = 3; }
+      note(action.type + " · beat " + state.beat + " · " + (state.teacher || ""));
+    }
+
+    CLASSROOM.ui.mount(
+      document.getElementById("shell"),
+      function () { return state; },
+      dispatch
+    );
+
+    var demo = (location.search.match(/[?&]demo=([^&]+)/) || [])[1];
+    if (demo === "locked" || demo === "phasea") {
+      draftFill();
+      dispatch({
+        type: "lockPicks",
+        payload: {
+          prize: "a golden trophy",
+          noisemaker: "bubble wrap",
+          victory: "pop a safe party popper",
+          activity: "typing on a computer",
+          stringTarget: "the teacher's shoes"
+        }
+      });
+      if (CLASSROOM.modules && CLASSROOM.modules.options) {
+        CLASSROOM.modules.options.lockPicks({
+          prize: "a golden trophy",
+          noisemaker: "bubble wrap",
+          victory: "pop a safe party popper",
+          activity: "typing on a computer",
+          stringTarget: "the teacher's shoes"
+        });
+      }
+      if (demo === "phasea") dispatch({ type: "startPhaseA", payload: {} });
+      var ui = document.getElementById("shell").__classroomUi;
+      if (ui && ui.update) ui.update();
+    } else {
+      note("choose five picks, then lock");
+    }
+
+    function draftFill() {}
+  </script>
+</body>
+</html>

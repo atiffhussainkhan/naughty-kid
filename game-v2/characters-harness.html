@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Characters harness — teacher, Kid A, Kid B</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1a222c; color: #e8eef4; font-family: "Segoe UI", sans-serif; }
+    body { display: grid; grid-template-rows: auto 1fr; }
+    header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; background: #121820; border-bottom: 1px solid #2a3644; }
+    header strong { margin-right: 8px; }
+    button { background: #2d4a63; color: #fff; border: 0; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #3a5f7e; }
+    #status { margin-left: auto; font-size: 13px; opacity: 0.85; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <strong>3D people</strong>
+    <button type="button" data-pose="idle">Idle</button>
+    <button type="button" data-pose="walk">Walk</button>
+    <button type="button" data-pose="dance">Dance</button>
+    <button type="button" data-pose="freeze">Freeze</button>
+    <span id="status">loading…</span>
+  </header>
+  <canvas id="view"></canvas>
+  <script src="js/characters.js"></script>
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+    window.THREE = THREE;
+    THREE.GLTFLoader = GLTFLoader;
+
+    var canvas = document.getElementById("view");
+    var status = document.getElementById("status");
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    var scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x243040);
+    var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
+    camera.position.set(0, 2.2, 5.2);
+    camera.lookAt(0, 0.9, 0.4);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    var key = new THREE.DirectionalLight(0xfff2dd, 1.1);
+    key.position.set(2.5, 5, 3);
+    scene.add(key);
+    var fill = new THREE.DirectionalLight(0xb8d4ff, 0.35);
+    fill.position.set(-3, 2, -2);
+    scene.add(fill);
+    var floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3a4654, roughness: 0.85 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    function resize() {
+      var w = canvas.clientWidth;
+      var h = canvas.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    function frame() {
+      requestAnimationFrame(frame);
+      renderer.render(scene, camera);
+    }
+    frame();
+
+    var state = {
+      teacher: "Asleep",
+      kids: [
+        { id: "a", spot: 0, moving: false },
+        { id: "b", spot: 0, moving: false }
+      ]
+    };
+
+    CLASSROOM.characters.load(scene, state).then(function () {
+      status.textContent = "teacher Suit_Female · Kid A Casual_Male · Kid B Casual2_Female · clips Idle / Walk / Victory";
+    }).catch(function (err) {
+      status.textContent = "load failed: " + (err && err.message ? err.message : err);
+      console.error(err);
+    });
+
+    document.querySelectorAll("button[data-pose]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var pose = btn.getAttribute("data-pose");
+        CLASSROOM.characters.setTeacherPose(pose);
+        CLASSROOM.characters.setKidPose("a", pose);
+        CLASSROOM.characters.setKidPose("b", pose);
+        status.textContent = "pose: " + pose;
+      });
+    });
+  </script>
+</body>
+</html>

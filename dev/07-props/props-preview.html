@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Props preview — Dev 07</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1c1a17; color: #f4efe4; font-family: Georgia, "Times New Roman", serif; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #status {
+      position: fixed; left: 16px; bottom: 16px; margin: 0;
+      padding: 8px 12px; background: rgba(20, 16, 12, 0.72); border-radius: 6px;
+      font-size: 14px; line-height: 1.4; max-width: 52ch;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <p id="status">Loading room + 22 props…</p>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/room.js"></script>
+  <script src="js/space.js"></script>
+  <script src="js/props.js"></script>
+  <script type="module">
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+    window.THREE.GLTFLoader = GLTFLoader;
+
+    const status = document.getElementById("status");
+    const canvas = document.getElementById("view");
+    const view = CLASSROOM.scene.mount(canvas);
+
+    function frame() {
+      view.renderer.render(view.scene, view.camera);
+      requestAnimationFrame(frame);
+    }
+    window.addEventListener("resize", function () { view.resize(); });
+
+    CLASSROOM.room.load(view.scene).then(function (anchors) {
+      anchors.picks = {
+        prize: "trophy",
+        noise: "squeaky",
+        blast: "popper",
+        activity: "board",
+        string: "desk"
+      };
+      anchors.cushionCount = 6;
+      anchors.whoopeeIndexes = [0, 2, 5];
+      return CLASSROOM.props.load(view.scene, anchors);
+    }).then(function (result) {
+      var vm = CLASSROOM.props.viewModel();
+      status.textContent =
+        "Props ready — " + result.count + " named, " + result.whoopees +
+        " whoopees hidden at [" + result.hiddenWhoopees.join(", ") + "]. " +
+        "Phase A stays for B. Labels where no mesh.";
+      console.log("props result", result);
+      console.log("props viewModel", vm);
+      frame();
+    }).catch(function (err) {
+      status.textContent = "Props load failed: " + (err && err.message ? err.message : err);
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

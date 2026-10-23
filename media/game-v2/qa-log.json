@@ -1,0 +1,36 @@
+{
+  "final": {
+    "phase": "won",
+    "beat": 10,
+    "sessionWon": true,
+    "finals": {
+      "a": true,
+      "b": true,
+      "confetti": true,
+      "sillyString": true,
+      "sessionWon": true
+    },
+    "kids": [
+      {
+        "id": "kid-1",
+        "sendBack": {
+          "steps": 3,
+          "direction": "back"
+        },
+        "caught": true,
+        "spot": 0
+      },
+      {
+        "id": "kid-2",
+        "sendBack": {
+          "steps": 3,
+          "direction": "back"
+        },
+        "caught": true,
+        "spot": 0
+      }
+    ],
+    "winOn": true
+  },
+  "sendBackAtBeat3": true
+}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Classroom — session &amp; edges</title>
+  <style>
+    :root {
+      --ink: #1f1a14;
+      --paper: #f3ead8;
+      --band: #2c4a3e;
+      --warn: #8a3b2a;
+    }
+    html, body { margin: 0; min-height: 100%; background: linear-gradient(165deg, #d9c8a8 0%, #f3ead8 45%, #c5d4c8 100%); color: var(--ink); font: 16px/1.45 "Iowan Old Style", "Palatino Linotype", Palatino, serif; }
+    body { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; }
+    header { padding: 1.25rem 1.5rem 0.5rem; }
+    header h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: 0.02em; color: var(--band); }
+    header p { margin: 0.35rem 0 0; max-width: 36rem; }
+    main { padding: 0.75rem 1.5rem 1.5rem; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr); align-items: start; }
+    @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
+    #stage {
+      position: relative;
+      min-height: 18rem;
+      border: 0;
+      background:
+        radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.35), transparent 55%),
+        linear-gradient(180deg, #6f8f7a 0%, #3e5c4f 40%, #2a3a32 100%);
+      color: #f7f1e4;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+    #stage .brand { font-size: 1.35rem; font-weight: 700; letter-spacing: 0.04em; }
+    #hostLine { margin: 0.5rem 0 0; font-size: 1.05rem; max-width: 28rem; }
+    #win {
+      display: none;
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      background: rgba(20, 16, 12, 0.55);
+      font-size: 1.15rem;
+    }
+    #win.on { display: block; }
+    aside {
+      background: rgba(255, 252, 245, 0.82);
+      padding: 1rem 1.1rem;
+      border-left: 4px solid var(--band);
+    }
+    aside h2 { margin: 0 0 0.5rem; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--band); }
+    #status { margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; }
+    #gaps { margin: 0.75rem 0 0; padding: 0; list-style: none; }
+    #gaps li { margin: 0.35rem 0; padding: 0.4rem 0.5rem; background: rgba(138, 59, 42, 0.08); color: var(--warn); font-size: 0.9rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.85rem; }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid #3e5c4f;
+      background: #fffaf0;
+      color: var(--ink);
+      padding: 0.35rem 0.65rem;
+    }
+    button:hover { background: #e7f0ea; }
+    footer { padding: 0.75rem 1.5rem 1.25rem; font-size: 0.85rem; opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Classroom</h1>
+    <p>One session. Phase handoff waits for kids at the rear. Session won only after both finales. Min two kids. Beats 7 and 9 leave one-kid gaps — no solo repair.</p>
+  </header>
+  <main>
+    <section id="stage" aria-live="polite">
+      <div class="brand">Classroom</div>
+      <p id="hostLine">Start a session with two kids.</p>
+      <div id="win" role="status">Phase B is won. The session is won.</div>
+    </section>
+    <aside>
+      <h2>Session</h2>
+      <pre id="status"></pre>
+      <ul id="gaps"></ul>
+      <div class="actions" id="actions"></div>
+    </aside>
+  </main>
+  <footer>Wired modules: <code>session</code>, <code>edges</code>. Art and beat interiors come from sibling slices.</footer>
+
+  <script src="js/session.js"></script>
+  <script src="js/edges.js"></script>
+  <script src="js/session-edges.js"></script>
+  <script>
+    (function () {
+      var CLASSROOM = window.CLASSROOM || (window.CLASSROOM = {});
+      var state = null;
+      var statusEl = document.getElementById("status");
+      var hostEl = document.getElementById("hostLine");
+      var winEl = document.getElementById("win");
+      var gapsEl = document.getElementById("gaps");
+      var actionsEl = document.getElementById("actions");
+
+      function dispatch(action) {
+        var wire = CLASSROOM.sessionEdges;
+        if (!wire || typeof wire.reduce !== "function") return;
+        var out = wire.reduce(state, action);
+        state = out.state;
+        CLASSROOM.state = state;
+        paint();
+        return out;
+      }
+
+      CLASSROOM.dispatch = dispatch;
+
+      function paint() {
+        var view = CLASSROOM.sessionEdges && CLASSROOM.sessionEdges.viewModel(state);
+        var session = view && view.session;
+        var edges = view && view.edges;
+        var lines = [];
+        lines.push("phase: " + (view && view.phase));
+        lines.push("beat: " + (view && view.beat));
+        lines.push("kids: " + (session && session.kids));
+        lines.push("kidsAtRear: " + !!(view && view.kidsAtRear));
+        lines.push("finals.a: " + !!(view && view.finals && view.finals.a));
+        lines.push("finals.b: " + !!(view && view.finals && view.finals.b));
+        lines.push("sessionWon: " + !!(view && view.sessionWon));
+        if (edges) {
+          lines.push("neverStir: " + !!edges.neverStir);
+          lines.push("neverTurn: " + !!edges.neverTurn);
+          lines.push("lineGap: " + !!edges.oneKidLineGap);
+          lines.push("crawlGap: " + !!edges.oneKidCrawlGap);
+        }
+        statusEl.textContent = lines.join("\n");
+        hostEl.textContent = (session && session.hostLine) || (view && view.sessionWon ? "Phase B is won. The session is won." : "One room. One session.");
+        winEl.classList.toggle("on", !!(view && view.sessionWon));
+        gapsEl.innerHTML = "";
+        var list = (edges && edges.gaps) || (state && state.gaps) || [];
+        var i;
+        for (i = 0; i < list.length; i++) {
+          var li = document.createElement("li");
+          li.textContent = list[i].id + ": " + list[i].text;
+          gapsEl.appendChild(li);
+        }
+      }
+
+      function btn(label, action) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = label;
+        b.addEventListener("click", function () { dispatch(action); });
+        actionsEl.appendChild(b);
+      }
+
+      btn("Start (2 kids)", { type: "startSession", kids: 2, prize: "a golden trophy" });
+      btn("Refuse 1 kid", { type: "startSession", kids: 1 });
+      btn("Finale A", { type: "markFinalA", blast: "pop a safe party popper" });
+      btn("Phase B (rear)", { type: "beginPhaseB", kidsAtRear: true, activity: "reading a big book" });
+      btn("Phase B (not rear)", { type: "beginPhaseB", kidsAtRear: false });
+      btn("Never stir", { type: "neverStir" });
+      btn("Never turn", { type: "neverTurn" });
+      btn("One-kid line", { type: "beat7Pass", kids: 1, feet: true, dropped: false });
+      btn("One-kid crawl", { type: "beat9Crawl", kids: 1, yellDone: true, crawl: true });
+      btn("Finale B", { type: "markFinalB", spray: "the teacher's desk" });
+
+      paint();
+    })();
+  </script>
+</body>
+</html>

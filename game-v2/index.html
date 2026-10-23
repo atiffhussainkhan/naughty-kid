@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Classroom</title>
+  <link rel="stylesheet" href="js/host-ui.css">
+  <style>
+    html, body { margin: 0; height: 100%; background: #1c1a17; color: #f4efe4; }
+    body.classroom-shell { display: flex; overflow: hidden; }
+    canvas#view { display: block; flex: 1 1 auto; min-width: 0; width: auto; height: 100%; }
+    .classroom-ui-dock { flex: 0 0 auto; align-self: stretch; max-height: 100%; }
+    #status {
+      position: fixed; left: 16px; bottom: 16px; margin: 0; z-index: 3;
+      padding: 8px 12px; background: rgba(20, 16, 12, 0.72);
+      font: 15px/1.4 Georgia, "Times New Roman", serif; max-width: 42ch;
+    }
+    #win {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(20, 16, 12, 0.72); z-index: 4;
+    }
+    #win.on { display: flex; }
+    #win p { margin: 0; font: 28px/1.3 Georgia, "Times New Roman", serif; text-align: center; }
+  </style>
+</head>
+<body class="classroom-shell">
+  <canvas id="view"></canvas>
+  <p id="status"></p>
+  <div id="win" role="status"><p>Phase B is won. The session is won.</p></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+  <!-- Session frame + pacing edges (Dev 09) -->
+  <script src="js/session.js"></script>
+  <script src="js/edges.js"></script>
+  <script src="js/session-edges.js"></script>
+
+  <!-- Beat / teacher / movement slices when present -->
+  <script src="../game-slices/02-phase-a/module.js"></script>
+  <script src="../game-slices/03-phase-b/module.js"></script>
+  <script src="../game-slices/04-teacher/module.js"></script>
+  <script src="../game-slices/05-movement/module.js"></script>
+  <script src="../game-slices/07-options/module.js"></script>
+  <script src="../game-slices/08-cues/module.js"></script>
+  <script src="../game-slices/09-edges/module.js"></script>
+
+  <script src="js/phase-a.js"></script>
+  <script src="js/phase-a-ui.js"></script>
+  <script src="js/phase-b.js"></script>
+  <script src="js/phase-b-ui.js"></script>
+  <script src="js/movement.js"></script>
+  <script src="js/teacher.js"></script>
+  <script src="js/teacher-move-bind.js"></script>
+  <script src="js/space.js"></script>
+  <script src="js/props.js"></script>
+
+  <script src="js/scene.js"></script>
+  <script src="js/room.js"></script>
+  <script src="js/characters.js"></script>
+  <script src="js/host-ui.js"></script>
+
+  <script>
+    (function () {
+      var CLASSROOM = window.CLASSROOM || (window.CLASSROOM = {});
+      CLASSROOM.modules = CLASSROOM.modules || {};
+
+      var state = null;
+      var view = null;
+      var LOADER_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+      var UTILS_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js";
+
+      function unwrap(out, prev) {
+        if (!out || typeof out !== "object") return { state: prev, events: [], gaps: [], packet: null };
+        var packed = Object.prototype.hasOwnProperty.call(out, "state") &&
+          (Object.prototype.hasOwnProperty.call(out, "events") || Object.prototype.hasOwnProperty.call(out, "gaps"));
+        if (packed) {
+          return { state: out.state, events: out.events || [], gaps: out.gaps || [], packet: out };
+        }
+        return { state: out, events: out.events || [], gaps: out.gaps || [], packet: null };
+      }
+
+      function reducers() {
+        var list = [];
+        function add(fn) {
+          if (typeof fn === "function" && list.indexOf(fn) === -1) list.push(fn);
+        }
+        if (CLASSROOM.sessionEdges && typeof CLASSROOM.sessionEdges.reduce === "function") {
+          add(function (s, a) {
+            var out = CLASSROOM.sessionEdges.reduce(s, a);
+            return out && out.packet ? out.packet : out;
+          });
+        } else {
+          add(CLASSROOM.modules.session && CLASSROOM.modules.session.reduce);
+          add(CLASSROOM.modules.edges && CLASSROOM.modules.edges.reduce);
+        }
+        add(CLASSROOM.phaseA && CLASSROOM.phaseA.reduce);
+        add(CLASSROOM.phaseB && CLASSROOM.phaseB.reduce);
+        /* Teacher slice owns state; teacher.js aliases poseFor for the cast.
+           Movement.js wraps 05-movement. followUps below applies freezeAll /
+           catchMovers / laughWindow / standUp / asleep / eyesShut. */
+        add(CLASSROOM.modules.teacher && CLASSROOM.modules.teacher.reduce);
+        if (!(CLASSROOM.modules.teacher && CLASSROOM.modules.teacher.reduce)) {
+          add(CLASSROOM.teacher && CLASSROOM.teacher.reduce);
+        }
+        add(CLASSROOM.movement && CLASSROOM.movement.reduce);
+        return list;
+      }
+
+      function followUps(events) {
+        var extra = [];
+        var i;
+        var type;
+        if (!events || !events.length) return extra;
+        for (i = 0; i < events.length; i++) {
+          type = events[i] && events[i].type;
+          if (type === "freezeAll" || type === "catchMovers" || type === "standUp" || type === "asleep" || type === "eyesShut") {
+            extra.push({ type: type });
+          }
+          if (type === "laughWindow") {
+            extra.push({ type: "laughWindow", open: events[i].open === true });
+          }
+        }
+        return extra;
+      }
+
+      function fold(current, action) {
+        var list = reducers();
+        var packet = null;
+        var pending = [];
+        var i;
+        var step;
+        for (i = 0; i < list.length; i++) {
+          try {
+            step = unwrap(list[i](current, action), current);
+          } catch (err) {
+            continue;
+          }
+          current = step.state;
+          if (step.packet) packet = step.packet;
+          pending = pending.concat(followUps(step.events));
+        }
+        return { state: current, packet: packet, pending: pending };
+      }
+
+      function ensureKids(count) {
+        var n = 2;
+        var kids = [];
+        var i;
+        if (typeof count === "number" && count >= 2) n = count;
+        else if (Array.isArray(count) && count.length >= 2) return count;
+        for (i = 0; i < n; i++) {
+          kids.push({ id: "kid-" + (i + 1), spot: 0, moving: false, frozen: false, statue: false });
+        }
+        return kids;
+      }
+
+      function openSession(action) {
+        var payload = action && action.payload;
+        var kids = 2;
+        var opened;
+        if (payload && typeof payload.kids === "number") kids = payload.kids;
+        if (action && typeof action.kids === "number") kids = action.kids;
+        if (!state || typeof state !== "object") state = {};
+        if (payload && typeof payload === "object" && action.type === "lockPicks") {
+          state.picks = payload;
+        } else if (state.picks == null && payload && typeof payload === "object") {
+          /* startPhaseA payload is often empty; keep locked picks. */
+        }
+        if (state.phase === "A" || state.phase === "B" || state.phase === "won") return;
+        opened = fold(state, {
+          type: "startSession",
+          kids: kids,
+          prize: (state.picks && state.picks.prize) || "a golden trophy",
+          host: "teacher"
+        });
+        /* Movement normalize turns a numeric kids count into []. Restore the cast. */
+        if (opened && opened.state) {
+          opened.state.kids = ensureKids(opened.state.kids && opened.state.kids.length ? opened.state.kids : kids);
+          if (state.picks) opened.state.picks = state.picks;
+        }
+        return opened;
+      }
+
+      function show() {
+        var sessionView = CLASSROOM.modules.session && CLASSROOM.modules.session.viewModel
+          ? CLASSROOM.modules.session.viewModel(state)
+          : (CLASSROOM.sessionEdges && CLASSROOM.sessionEdges.viewModel(state).session);
+        /* DESIGN-DECISION: session won only after both finales. Phase B sets
+           state.sessionWon; session.viewModel also wants phase === "won". */
+        var won = !!(state && state.sessionWon === true) ||
+          !!(state && state.finals && state.finals.a === true && state.finals.b === true) ||
+          !!(sessionView && sessionView.sessionWon);
+        if (won && state && state.phase !== "won") state.phase = "won";
+        document.getElementById("win").classList.toggle("on", won);
+        var status = document.getElementById("status");
+        var line = "";
+        if (won) line = "Phase B is won. The session is won.";
+        else if (sessionView && sessionView.hostLine) line = sessionView.hostLine;
+        else if (!state || !state.phase) line = "One session. Lock picks, then start with at least two kids.";
+        status.textContent = line;
+        syncCast();
+      }
+
+      function syncCast() {
+        var cast = CLASSROOM.characters;
+        var posed;
+        var kids;
+        var i;
+        var kid;
+        var pose;
+        if (!cast) return;
+        if (typeof cast.setTeacherPose === "function" && CLASSROOM.teacher && typeof CLASSROOM.teacher.poseFor === "function") {
+          try {
+            posed = CLASSROOM.teacher.poseFor(state);
+            if (posed && posed.pose) cast.setTeacherPose(posed.pose);
+          } catch (err) {}
+        }
+        kids = state && state.kids;
+        if (!kids || !kids.length || typeof cast.setKidPose !== "function") return;
+        for (i = 0; i < kids.length; i++) {
+          kid = kids[i];
+          if (!kid || kid.id == null) continue;
+          pose = (kid.frozen || kid.statue) ? "freeze" : ((kid.moving || kid.walking) ? "walk" : "idle");
+          try { cast.setKidPose(kid.id, pose); } catch (err) {}
+        }
+      }
+
+      function flatten(action) {
+        var next = {};
+        var key;
+        var body;
+        if (!action || typeof action !== "object") return action;
+        for (key in action) {
+          if (Object.prototype.hasOwnProperty.call(action, key)) next[key] = action[key];
+        }
+        body = action.payload;
+        if (body && typeof body === "object") {
+          for (key in body) {
+            if (Object.prototype.hasOwnProperty.call(body, key) && next[key] == null) {
+              next[key] = body[key];
+            }
+          }
+        }
+        return next;
+      }
+
+      function dispatch(action) {
+        var step;
+        var guard = 0;
+        var next;
+        var opened;
+        if (!action || typeof action !== "object") return { state: state, events: [], gaps: [] };
+        action = flatten(action);
+
+        if (action.type === "startPhaseA" || action.type === "lockPicks") {
+          if (action.type === "lockPicks") {
+            if (!state) state = {};
+            state.picks = action.payload || {
+              prize: action.prize,
+              noisemaker: action.noisemaker,
+              victory: action.victory,
+              activity: action.activity,
+              stringTarget: action.stringTarget
+            };
+          }
+          if (action.type === "startPhaseA" || (action.type === "lockPicks" && action.start === true)) {
+            opened = openSession(action);
+            if (opened) {
+              state = opened.state;
+              state.kids = ensureKids(state.kids);
+              if (!state.picks && action.payload && action.payload.prize) state.picks = action.payload;
+            }
+          }
+        }
+
+        if (state && (!Array.isArray(state.kids) || state.kids.length < 2)) {
+          state.kids = ensureKids(state.kids);
+        }
+
+        if (action.type === "beginPhaseB") {
+          if (action.kidsAtRear == null) action.kidsAtRear = true;
+          if (!action.activity && state && state.picks && state.picks.activity) {
+            action.activity = state.picks.activity;
+          }
+        }
+
+        step = fold(state, action);
+        while (step.pending.length && guard < 6) {
+          next = step.pending.shift();
+          guard += 1;
+          step = fold(step.state, next);
+        }
+        state = step.state;
+        if (state && (!Array.isArray(state.kids) || state.kids.length < 2)) {
+          state.kids = ensureKids(state.kids);
+        }
+        if (CLASSROOM.phaseA && typeof CLASSROOM.phaseA.syncBeats === "function") {
+          try { CLASSROOM.phaseA.syncBeats(state); } catch (err) {}
+        }
+        CLASSROOM.state = state;
+        show();
+        return step.packet || { state: state, events: [], gaps: state.gaps || [] };
+      }
+
+      CLASSROOM.dispatch = dispatch;
+
+      function settle(value) {
+        if (value && typeof value.then === "function") value.then(function () {}, function () {});
+      }
+
+      function place(anchors) {
+        var scene = view && view.scene;
+        var usable = anchors && typeof anchors === "object" && anchors.desk;
+        var loaded;
+        if (!scene) return;
+        if (CLASSROOM.props && typeof CLASSROOM.props.load === "function") {
+          try { settle(CLASSROOM.props.load(scene, usable ? anchors : undefined)); } catch (err) {}
+        }
+        if (CLASSROOM.characters && typeof CLASSROOM.characters.load === "function") {
+          try {
+            loaded = CLASSROOM.characters.load(scene, state);
+            if (loaded && typeof loaded.then === "function") loaded.then(function () { syncCast(); }, function () {});
+          } catch (err) {}
+        }
+      }
+
+      function paint() {
+        if (!view || !view.renderer || !view.scene || !view.camera) return;
+        requestAnimationFrame(paint);
+        try { view.renderer.render(view.scene, view.camera); } catch (err) {}
+      }
+
+      function resize() {
+        var canvas;
+        var width;
+        var height;
+        if (!view || !view.renderer || !view.camera) return;
+        canvas = view.renderer.domElement;
+        width = canvas.clientWidth || 1;
+        height = canvas.clientHeight || 1;
+        view.camera.aspect = width / height;
+        view.camera.updateProjectionMatrix();
+        view.renderer.setSize(width, height, false);
+      }
+
+      function boot() {
+        var canvas = document.getElementById("view");
+        var room;
+        if (window.THREE && CLASSROOM.scene && typeof CLASSROOM.scene.mount === "function") {
+          try { view = CLASSROOM.scene.mount(canvas); } catch (err) { view = null; }
+        }
+        if (view && view.scene && CLASSROOM.room && typeof CLASSROOM.room.load === "function") {
+          try {
+            room = CLASSROOM.room.load(view.scene);
+            if (room && typeof room.then === "function") room.then(place, function () { place(null); });
+            else place(room);
+          } catch (err) {
+            place(null);
+          }
+        } else {
+          place(null);
+        }
+        if (CLASSROOM.ui && typeof CLASSROOM.ui.mount === "function") {
+          try { CLASSROOM.ui.mount(document.body, function () { return state || {}; }, dispatch); } catch (err) {}
+        }
+        if (view && view.renderer) {
+          window.addEventListener("resize", resize);
+          resize();
+          paint();
+        }
+        show();
+      }
+
+      function importedNames(source) {
+        var found = {};
+        var match = source.match(/import\s*\{([\s\S]*?)\}\s*from\s*['"]three['"]/);
+        var parts;
+        var i;
+        var piece;
+        var bits;
+        if (!match) return found;
+        parts = match[1].split(",");
+        for (i = 0; i < parts.length; i++) {
+          piece = parts[i].replace(/\/\*[\s\S]*?\*\//g, "").trim();
+          if (!piece) continue;
+          bits = piece.split(/\s+as\s+/);
+          found[bits[bits.length - 1].trim()] = bits[0].trim();
+        }
+        return found;
+      }
+
+      function bridgeThree(names) {
+        var lines = ["const THREE = window.THREE;"];
+        var local;
+        for (local in names) {
+          if (Object.prototype.hasOwnProperty.call(names, local)) {
+            lines.push("export const " + local + " = THREE." + names[local] + ";");
+          }
+        }
+        return URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/javascript" }));
+      }
+
+      function installLoader() {
+        if (!window.THREE) return Promise.resolve();
+        return Promise.all([
+          fetch(LOADER_URL).then(function (res) { if (!res.ok) throw new Error("GLTFLoader"); return res.text(); }),
+          fetch(UTILS_URL).then(function (res) { if (!res.ok) throw new Error("BufferGeometryUtils"); return res.text(); })
+        ]).then(function (files) {
+          var names = importedNames(files[0]);
+          var utilsNames = importedNames(files[1]);
+          var key;
+          var threeUrl;
+          var utilsUrl;
+          var loaderUrl;
+          var utilsSource;
+          var loaderSource;
+          for (key in utilsNames) names[key] = utilsNames[key];
+          threeUrl = bridgeThree(names);
+          utilsSource = files[1].replace(/from\s*['"]three['"]/, "from " + JSON.stringify(threeUrl));
+          utilsUrl = URL.createObjectURL(new Blob([utilsSource], { type: "text/javascript" }));
+          loaderSource = files[0]
+            .replace(/from\s*['"]three['"]/, "from " + JSON.stringify(threeUrl))
+            .replace(/from\s*['"]\.\.\/utils\/BufferGeometryUtils\.js['"]/, "from " + JSON.stringify(utilsUrl));
+          loaderUrl = URL.createObjectURL(new Blob([loaderSource], { type: "text/javascript" }));
+          return import(loaderUrl).then(function (mod) {
+            window.THREE.GLTFLoader = mod.GLTFLoader;
+          });
+        });
+      }
+
+      installLoader().then(boot, function () { boot(); });
+    })();
+  </script>
+</body>
+</html>

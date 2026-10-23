@@ -1,0 +1,39 @@
+# Secrets & credentials — never commit
+.env
+.env.*
+!.env.example
+hosts.yml
+**/hosts.yml
+*credential*
+*credentials*
+*.pem
+*.key
+*.p12
+*.pfx
+.id_rsa*
+.id_ed25519*
+
+# Auth dumps / known secret filenames
+gh-token*
+github-token*
+.cursor-token*
+.git-credentials
+netrc
+.npmrc
+
+# Local / tooling noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+node_modules/
+.npm/
+dist/
+build/
+*.log
+.cache/
+
+# Huge external asset clone trees (not project-owned)
+asset-repos/
