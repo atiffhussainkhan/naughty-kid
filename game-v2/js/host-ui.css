@@ -35,7 +35,7 @@
   border: 3px solid #24527a;
   border-radius: 18px;
   box-shadow: 0 12px 28px rgba(30, 60, 110, 0.18);
-  font-family: Palatino, "Iowan Old Style", Georgia, serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   pointer-events: auto;
 }
 
@@ -221,4 +221,16 @@
     width: auto;
     max-height: 42vh;
   }
+}
+
+.classroom-shell { min-width: 0; }
+.classroom-ui { min-width: 0; overscroll-behavior: contain; }
+.classroom-ui button, .classroom-choice { min-height: 44px; }
+.classroom-choice { align-items: center; }
+.classroom-ui button:focus-visible, .classroom-ui input:focus-visible { outline: 3px solid #24527a; outline-offset: 3px; }
+.classroom-ui .classroom-lock { background: #bd2544; color: #fff; border-color: #5c1818; }
+.classroom-ui button[data-action="beginPhaseB"], .classroom-ui button[data-action="startPhaseA"] { font-weight: bold; background: #e4efdf; }
+@media (max-width: 720px) {
+  .classroom-shell > canvas#view { width: 100%; min-width: 0; min-height: 0; flex: 1 1 45%; }
+  .classroom-ui-dock { box-sizing: border-box; flex: 0 1 55%; width: 100%; max-height: 55dvh; overflow-y: auto; }
 }

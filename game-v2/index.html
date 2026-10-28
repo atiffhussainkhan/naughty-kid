@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Classroom</title>
+  <title>NautiKid — Classroom Mischief</title>
   <link rel="stylesheet" href="js/host-ui.css">
   <style>
     html, body { margin: 0; height: 100%; background: #1c1a17; color: #f4efe4; }
     body.classroom-shell { display: flex; overflow: hidden; }
-    canvas#view { display: block; flex: 1 1 auto; min-width: 0; width: auto; height: 100%; }
+    canvas#view { display: block; flex: 1 1 0; min-width: 0; width: 0; height: 100%; }
     .classroom-ui-dock { flex: 0 0 auto; align-self: stretch; max-height: 100%; }
     #status {
       position: fixed; left: 16px; bottom: 16px; margin: 0; z-index: 3;
@@ -21,14 +21,22 @@
     }
     #win.on { display: flex; }
     #win p { margin: 0; font: 28px/1.3 Georgia, "Times New Roman", serif; text-align: center; }
+    #replay { display:block; margin:20px auto; padding:14px 24px; border:0; border-radius:12px; background:#f8c94e; color:#15243c; font:700 18px system-ui; cursor:pointer; }
+    @media (max-width: 720px) {
+      body.classroom-shell { flex-direction:column; }
+      canvas#view { flex:0 0 45vh; width:100%; height:45vh; }
+      .classroom-ui-dock { flex:1 1 0; width:100%; min-height:0; max-height:55vh; }
+      #status { top:8px; bottom:auto; left:8px; max-width:65%; font:12px/1.3 system-ui; }
+    }
   </style>
 </head>
 <body class="classroom-shell">
   <canvas id="view"></canvas>
   <p id="status"></p>
-  <div id="win" role="status"><p>Phase B is won. The session is won.</p></div>
+  <div id="win" role="status"><div><p>Classroom mission complete!</p><button id="replay" type="button">Play another round</button></div></div>
+  <p id="load-status" role="status" style="position:fixed;top:12px;left:12px;z-index:5;background:#17202de8;padding:10px;border-radius:8px">Loading classroom models…</p>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="vendor/three/build/three.min.js"></script>
 
   <!-- Session frame + pacing edges (Dev 09) -->
   <script src="js/session.js"></script>
@@ -66,8 +74,9 @@
 
       var state = null;
       var view = null;
-      var LOADER_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-      var UTILS_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js";
+      var loadFailed = false;
+      var LOADER_URL = "vendor/three/examples/jsm/loaders/GLTFLoader.js";
+      var UTILS_URL = "vendor/three/examples/jsm/utils/BufferGeometryUtils.js";
 
       function unwrap(out, prev) {
         if (!out || typeof out !== "object") return { state: prev, events: [], gaps: [], packet: null };
@@ -146,7 +155,7 @@
         var n = 2;
         var kids = [];
         var i;
-        if (typeof count === "number" && count >= 2) n = count;
+        if (Number.isFinite(count) && count === Math.floor(count) && count >= 2 && count <= 32) n = count;
         else if (Array.isArray(count) && count.length >= 2) return count;
         for (i = 0; i < n; i++) {
           kids.push({ id: "kid-" + (i + 1), spot: 0, moving: false, frozen: false, statue: false });
@@ -202,26 +211,8 @@
       }
 
       function syncCast() {
-        var cast = CLASSROOM.characters;
-        var posed;
-        var kids;
-        var i;
-        var kid;
-        var pose;
-        if (!cast) return;
-        if (typeof cast.setTeacherPose === "function" && CLASSROOM.teacher && typeof CLASSROOM.teacher.poseFor === "function") {
-          try {
-            posed = CLASSROOM.teacher.poseFor(state);
-            if (posed && posed.pose) cast.setTeacherPose(posed.pose);
-          } catch (err) {}
-        }
-        kids = state && state.kids;
-        if (!kids || !kids.length || typeof cast.setKidPose !== "function") return;
-        for (i = 0; i < kids.length; i++) {
-          kid = kids[i];
-          if (!kid || kid.id == null) continue;
-          pose = (kid.frozen || kid.statue) ? "freeze" : ((kid.moving || kid.walking) ? "walk" : "idle");
-          try { cast.setKidPose(kid.id, pose); } catch (err) {}
+        if (CLASSROOM.characters && typeof CLASSROOM.characters.sync === "function") {
+          CLASSROOM.characters.sync(state);
         }
       }
 
@@ -251,6 +242,16 @@
         var opened;
         if (!action || typeof action !== "object") return { state: state, events: [], gaps: [] };
         action = flatten(action);
+        if (action.type === "restartSession") {
+          var reset = CLASSROOM.modules.session.reduce(state, action);
+          state = reset.state || reset;
+          state.kids = ensureKids(state.kids);
+          CLASSROOM.state = state;
+          if (CLASSROOM.ui && CLASSROOM.ui.reset) CLASSROOM.ui.reset();
+          document.getElementById("win").classList.remove("on");
+          show();
+          return reset;
+        }
 
         if (action.type === "startPhaseA" || action.type === "lockPicks") {
           if (action.type === "lockPicks") {
@@ -303,9 +304,17 @@
       }
 
       CLASSROOM.dispatch = dispatch;
+      document.getElementById("replay").addEventListener("click", function () { dispatch({type:"restartSession"}); });
+      function loadError(err) {
+        loadFailed = true;
+        var el = document.getElementById("load-status");
+        el.hidden = false;
+        el.textContent = "Classroom could not finish loading: " + (err && err.message || "missing asset") + ". Start with Start-NautiKid.command and reload.";
+        console.error(err);
+      }
 
       function settle(value) {
-        if (value && typeof value.then === "function") value.then(function () {}, function () {});
+        if (value && typeof value.then === "function") value.then(function () {}, loadError);
       }
 
       function place(anchors) {
@@ -314,13 +323,13 @@
         var loaded;
         if (!scene) return;
         if (CLASSROOM.props && typeof CLASSROOM.props.load === "function") {
-          try { settle(CLASSROOM.props.load(scene, usable ? anchors : undefined)); } catch (err) {}
+          try { settle(CLASSROOM.props.load(scene, usable ? anchors : undefined)); } catch (err) { loadError(err); }
         }
         if (CLASSROOM.characters && typeof CLASSROOM.characters.load === "function") {
           try {
-            loaded = CLASSROOM.characters.load(scene, state);
-            if (loaded && typeof loaded.then === "function") loaded.then(function () { syncCast(); }, function () {});
-          } catch (err) {}
+            loaded = CLASSROOM.characters.load(scene, state, anchors);
+            if (loaded && typeof loaded.then === "function") loaded.then(function () { syncCast(); if (!loadFailed) document.getElementById("load-status").hidden = true; }, loadError);
+          } catch (err) { loadError(err); }
         }
       }
 
@@ -347,12 +356,12 @@
         var canvas = document.getElementById("view");
         var room;
         if (window.THREE && CLASSROOM.scene && typeof CLASSROOM.scene.mount === "function") {
-          try { view = CLASSROOM.scene.mount(canvas); } catch (err) { view = null; }
+          try { view = CLASSROOM.scene.mount(canvas); } catch (err) { view = null; loadError(err); }
         }
         if (view && view.scene && CLASSROOM.room && typeof CLASSROOM.room.load === "function") {
           try {
             room = CLASSROOM.room.load(view.scene);
-            if (room && typeof room.then === "function") room.then(place, function () { place(null); });
+            if (room && typeof room.then === "function") room.then(place, function (err) { loadError(err); });
             else place(room);
           } catch (err) {
             place(null);
@@ -424,11 +433,12 @@
           loaderUrl = URL.createObjectURL(new Blob([loaderSource], { type: "text/javascript" }));
           return import(loaderUrl).then(function (mod) {
             window.THREE.GLTFLoader = mod.GLTFLoader;
+            return import("./vendor/three/examples/jsm/loaders/FBXLoader.js").then(function (fbx) { window.THREE.FBXLoader = fbx.FBXLoader; });
           });
         });
       }
 
-      installLoader().then(boot, function () { boot(); });
+      installLoader().then(boot, loadError);
     })();
   </script>
 </body>

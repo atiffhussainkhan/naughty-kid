@@ -62,7 +62,7 @@
     cushionAlt: ["pillow-blue.glb", "pillowBlue.glb", "pillow_B.gltf"],
     whoopee: ["pillow-long.glb", "pillowLong.glb", "pillow_B.gltf"],
     sunglasses: ["sunglasses.glb", "aid-sunglasses.glb"],
-    flashlight: ["torch_lit.gltf.glb", "lamp-table.glb", "lampSquareTable.glb"],
+    flashlight: ["flashlight.fbx", "torch_lit.gltf.glb", "lamp-table.glb", "lampSquareTable.glb"],
     board: ["pictureframe_large_A.gltf"]
   };
 
@@ -288,9 +288,11 @@
         resolve(null);
         return;
       }
-      var loader = new T.GLTFLoader();
+      var Loader = /\.fbx$/i.test(file) ? T.FBXLoader : T.GLTFLoader;
+      if (!Loader) { resolve(null); return; }
+      var loader = new Loader();
       loader.load(assetUrl(file), function (gltf) {
-        resolve(gltf.scene || null);
+        resolve(gltf.scene || (gltf.isObject3D ? gltf : null));
       }, undefined, function () {
         resolve(null);
       });
@@ -574,7 +576,7 @@
     var shadow = hold("shadow", "Teacher's shadow on the wall", here.shadow, "Teacher's shadow", [0.7, 1.1, 0.04]);
     shadow.visible = picks.activity === "board";
 
-    /* 20 Flashlight — torch stand-in */
+    /* 20 Flashlight — inspected CC0Tree library model */
     var torch = hold("flashlight", "Flashlight", here.flashlight, "Flashlight", [0.1, 0.1, 0.34]);
     jobs.push(useModel(torch, FILES.flashlight, 0.38));
 

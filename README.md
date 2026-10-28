@@ -1,47 +1,41 @@
-# Naughty Kid — Classroom Party Game
+# NautiKid — Classroom Mischief
 
-Classroom party game: requirements, design docs, and a playable 3D build.
+A host-operated 3D classroom party game: two pupils, one teacher, two phases and ten cooperative mischief challenges. The current build uses animated Quaternius characters and Kenney/KayKit room assets from the existing Image library.
 
-## Play the game
+## Play locally
 
-Open the playable build locally (no build step):
+On macOS, double-click **Start-NautiKid.command**. Keep the Terminal window open. Python 3 is required; the launcher serves the repository root and opens `/game-v2/` on an available local port.
 
-```bash
-# from this repo root — use any static file server, or open the file directly
-open game-v2/index.html
-# or:  python3 -m http.server -d game-v2 8080
+Or run from this repository:
+
+```sh
+python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
-Then visit `http://localhost:8080` if you used a server. The main entry is **`game-v2/index.html`**.
+Then open **http://127.0.0.1:8080/game-v2/**. Do not serve `game-v2` alone: shared gameplay modules live in `game-slices`.
 
-Earlier prototypes live under `game/` and `game-3d/`. Slice harnesses are in `game-slices/` and `dev/`.
+## Controls
 
-## Design & requirements
+Choose five round options, lock them and start Phase A with at least two players. The host panel presents the current challenge and available actions. Complete the five Phase A beats, return to the back and begin Phase B. Complete the final five beats to win, then play another round. Movement, teacher state and freeze/send-back rules drive the animated 3D cast. This is a host-operated party game, not a first-person action game.
 
-| Path | What it is |
-|------|------------|
-| [`docs/classroom-game/`](docs/classroom-game/) | Game design, phases, teacher behavior, props, coverage |
-| [`docs/requirements/`](docs/requirements/) | Broader product / systems requirements notes |
-| [`notes.md`](notes.md) | Project status notes |
-| [`archived.md`](archived.md) | Archived decisions / history |
+## Verify
 
-Start with `docs/classroom-game/mega-requirements.md` and the numbered design docs in that folder.
-
-## Repo layout
-
-```
-notes.md, archived.md
-docs/           design + requirements
-game-v2/        current playable 3D build (open index.html)
-game-3d/        3D prototype
-game/           earlier web prototype
-game-slices/    incremental slice harnesses
-dev/            phase / character / UI harnesses
-media/          screenshots and recordings
-internal/       working notes / audits
-artifacts/      agent artifacts
+```sh
+node tools/verify-game.cjs
 ```
 
-## License / assets
+See `docs/VERIFICATION.md` for the latest evidence and limits. The Three.js 0.160.0 runtime and loader are bundled under `game-v2/vendor/three` with their MIT licence, so gameplay does not need a CDN.
 
-3D character and prop assets under `game-v2/assets`, `game-3d/assets`, and related harness folders include license notes under each package’s `licenses/` where present. Treat third-party assets according to those licenses.
+## Assets and remaining art limitations
+
+The runtime artwork is included. `docs/ASSET-AUDIT.md` records the library selection and gaps. The present pupil models are adult-proportioned stylised characters used as stand-ins; authentic child meshes were not verified in the indexed library. Several special props remain labelled stand-ins. No new AI artwork was generated. Refer to package licences and provenance before commercial release.
+
+## Project layout
+
+- `game-v2/`: current 3D game.
+- `game-slices/`: shared rules and their self-tests.
+- `tools/`: launcher server and verification.
+- `docs/classroom-game/`: game design and requirements.
+- `game/`, `game-3d/`, `dev/`: earlier prototypes and focused harnesses.
+
+Repository: https://github.com/atiffhussainkhan/naughty-kid

@@ -315,13 +315,24 @@
     var laughing = teacher === "laughing";
     var i;
 
+    var finals = state && state.finals || {};
+    if (state && (state.phase === "won" || (finals.a === true && finals.b === true))) {
+      return [{ type: "restartSession", label: "Play another round", payload: {}, host: true }];
+    }
+    if (state && state.phase === "A" && (finals.a === true || finals.confetti === true)) {
+      return [
+        { type: "beginPhaseB", label: "Kids at the back — start Phase B", payload: { kidsAtRear: true, activity: picks.activity }, host: true },
+        { type: "restartSession", label: "Restart round", payload: {}, host: true }
+      ];
+    }
+
     if (beat < 1) {
       list.push({ type: "hostSetup", label: "Session", payload: { setup: "session" }, host: true });
       list.push({ type: "hostSetup", label: "Places", payload: { setup: "places" }, host: true });
       list.push({ type: "hostSetup", label: "Choices", payload: { setup: "choices" }, host: true });
       list.push({ type: "hostSetup", label: "Three calls", payload: { setup: "calls" }, host: true });
       list.push({ type: "startPhaseA", label: "Start Phase A", payload: {}, host: true });
-      return list;
+      return beat >= 1 ? list.concat([{ type: "restartSession", label: "Restart round", payload: {}, host: true }]) : list;
     }
 
     sibling = siblingActions(state);
@@ -335,7 +346,7 @@
         });
         list.push({ type: "kidStill", label: "Still", payload: {} });
       }
-      return list;
+      return beat >= 1 ? list.concat([{ type: "restartSession", label: "Restart round", payload: {}, host: true }]) : list;
     }
 
     if (beat === 1) {
@@ -386,7 +397,7 @@
       });
       list.push({ type: "kidStill", label: "Still", payload: {} });
     }
-    return list;
+    return beat >= 1 ? list.concat([{ type: "restartSession", label: "Restart round", payload: {}, host: true }]) : list;
   }
 
   function fingerprint(state) {
@@ -404,7 +415,9 @@
       state && state.noteInBox, state && state.sprayed, state && state.claimed,
       state && state.phase, state && state.caughtLaugh,
       state && state.finals && state.finals.a,
-      state && state.finals && state.finals.b
+      state && state.finals && state.finals.b,
+      state && state.round, state && state.laughing,
+      JSON.stringify(state && state.phaseA || null), JSON.stringify(state && state.phaseB || null)
     ].join("|");
   }
 
@@ -558,9 +571,11 @@
 
     phaseLine = el("p", "classroom-phase");
     if (beat < 1) text(phaseLine, "Picks locked. Phase A has not started.");
-    else if (state.phase === "B") text(phaseLine, "Phase B · Beat " + beat);
+    else if (state.phase === "B") text(phaseLine, "Round " + (state.round || 1) + " · Phase B · Beat " + beat);
     else if (state.phase === "won") text(phaseLine, "Session won");
-    else text(phaseLine, "Phase A · Beat " + beat);
+    else if (state.finals && (state.finals.a || state.finals.confetti)) text(phaseLine, "Phase A complete. Return the kids to the back for Phase B.");
+    else text(phaseLine, "Round " + (state.round || 1) + " · Phase A · Beat " + beat);
+    phaseLine.setAttribute("role", "status");
     panel.appendChild(phaseLine);
 
     for (n = 1; n <= 10; n += 1) {
@@ -568,7 +583,7 @@
       title = BEAT_TITLES[n - 1];
       item.setAttribute("title", title);
       item.setAttribute("aria-label", "Beat " + n + ", " + title);
-      if (n === beat) item.className = "on";
+      if (n === beat) { item.className = "on"; item.setAttribute("aria-current", "step"); }
       else if (beat >= 1 && n < beat) item.className = "done";
       text(item, String(n));
       strip.appendChild(item);
@@ -585,10 +600,7 @@
       for (i = 0; i < cue.lines.length; i += 1) {
         line = cue.lines[i];
         paragraph = el("p");
-        tag = el("span", "classroom-tag classroom-tag-" + String(line.tag || "").toLowerCase().replace(/\s+/g, "-"));
-        text(tag, line.tag);
-        paragraph.appendChild(tag);
-        paragraph.appendChild(document.createTextNode(" " + line.text));
+        paragraph.appendChild(document.createTextNode(String(line.text || "").replace(/^(?:(?:REQUIREMENT|DESIGN-DECISION|RECOMMENDATION)(?:\s+\d+)?\s*[:.—-]\s*)+/i, "")));
         article.appendChild(paragraph);
       }
     } else {
@@ -647,6 +659,13 @@
       beats: BEAT_TITLES.slice(),
       controls: buttonsFor(current)
     };
+  }
+
+  function reset(state) {
+    localSetup = "session";
+    lockError = "";
+    localLock = state && state.picks ? state.picks : null;
+    for (var i = 0; i < PICK_META.length; i++) draft[PICK_META[i].key] = localLock && localLock[PICK_META[i].key] || null;
   }
 
   function mount(mountRoot, getState, dispatch) {
@@ -744,9 +763,10 @@
     mount: mount,
     viewModel: viewModel,
     beats: BEAT_TITLES.slice(),
+    reset: reset,
     lists: listsOf
   };
-  classroom.ui = { mount: mount, viewModel: viewModel };
+  classroom.ui = { mount: mount, viewModel: viewModel, reset: reset };
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = classroom.modules.hostUi;

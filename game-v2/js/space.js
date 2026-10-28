@@ -49,7 +49,7 @@
     cushionAlt: { kind: "model", src: "assets/props/pillow-blue.glb", note: "Kenney blue pillow — alternate cushion." },
     whoopee: { kind: "model", src: "assets/props/pillow-long.glb", note: "Kenney long pillow — hidden whoopee stand-in (not a whoopee mesh)." },
     sunglasses: { kind: "model", src: "assets/props/sunglasses.glb", note: "Kenney aid sunglasses — oversized novelty glasses." },
-    flashlight: { kind: "model", src: "assets/props/torch_lit.gltf.glb", note: "KayKit lit torch — closest handheld light; not a flashlight." },
+    flashlight: { kind: "model", src: "assets/props/flashlight.fbx", note: "CC0Tree SM_Flashlight; inspected library model." },
     board: { kind: "model", src: "assets/props/pictureframe_large_A.gltf", note: "KayKit large picture frame — board stand-in (no whiteboard mesh). Screen panel is not used as a whiteboard." },
     squeaky: { kind: "label", text: "Squeaky toy" },
     bubble: { kind: "label", text: "Bubble wrap" },

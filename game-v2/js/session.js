@@ -23,6 +23,7 @@
     "pop a safe party popper": "pop a safe party popper",
     "safe party popper": "pop a safe party popper",
     "throw a handful of paper confetti": "throw a handful of paper confetti",
+    "throw a handful of paper confetti over the teacher's head": "throw a handful of paper confetti",
     "a handful of paper confetti": "throw a handful of paper confetti",
     "paper confetti": "throw a handful of paper confetti"
   };
@@ -36,7 +37,7 @@
 
   function norm(value) {
     if (typeof value !== "string") return "";
-    return value.toLowerCase().replace(/\s+/g, " ").trim();
+    return value.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, " ").trim();
   }
 
   function lookup(table, value) {
@@ -66,7 +67,25 @@
   }
 
   function integerKids(value) {
-    return typeof value === "number" && value === Math.floor(value) && value >= 2;
+    return typeof value === "number" && isFinite(value) && value === Math.floor(value) && value >= 2;
+  }
+
+  function restartSession(state) {
+    var previous = state && typeof state === "object" ? state : {};
+    var count = Array.isArray(previous.kids) ? previous.kids.length : previous.kids;
+    var round = typeof previous.round === "number" && isFinite(previous.round) && previous.round >= 1 ? Math.floor(previous.round) : (previous.phase ? 1 : 0);
+    var next = { phase: null, beat: 0, finals: { a: false, b: false }, round: round + 1,
+      host: "teacher", kids: integerKids(count) ? count : 2, kidsAtRear: true, room: "classroom" };
+    if (previous.picks && typeof previous.picks === "object") {
+      next.picks = {};
+      var names = ["prize", "noisemaker", "victory", "activity", "stringTarget"];
+      next.picksLocked = true;
+      for (var i = 0; i < names.length; i++) {
+        next.picks[names[i]] = previous.picks[names[i]];
+        if (typeof next.picks[names[i]] !== "string" || !next.picks[names[i]]) next.picksLocked = false;
+      }
+    }
+    return pack(next, [{ type: "session-reset", text: "Round " + next.round + ". Ready to start Phase A." }], []);
   }
 
   function doodleWindow(activity) {
@@ -92,6 +111,7 @@
     current.beat = 1;
     current.finals = { a: false, b: false };
     current.host = "teacher";
+    current.round = typeof current.round === "number" && isFinite(current.round) && current.round >= 1 ? Math.floor(current.round) : 1;
     current.kids = action.kids;
     current.kidsAtRear = true;
     current.room = "classroom";
@@ -240,6 +260,7 @@
     if (!act || typeof act !== "object") {
       return refused(state, "No action.");
     }
+    if (act.type === "restartSession") return restartSession(state);
     if (act.type === "startSession") return startSession(state, act);
     if (act.type === "markFinalA") return markFinalA(state, act);
     if (act.type === "beginPhaseB") return beginPhaseB(state, act);
@@ -277,7 +298,8 @@
       sessionWon: both,
       phaseBWon: current.finals.b === true && current.beat === 10,
       host: current.host === "teacher" ? "teacher" : null,
-      kids: typeof current.kids === "number" ? current.kids : 0,
+      kids: Array.isArray(current.kids) ? current.kids.length : (integerKids(current.kids) ? current.kids : 0),
+      round: current.round || 1,
       kidsAtRear: current.kidsAtRear === true,
       room: current.room || null,
       teacher: teacher,

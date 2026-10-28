@@ -28,13 +28,13 @@
 
     var scene = new THREE.Scene();
     scene.background = new THREE.Color(0xb8c4ce);
-    scene.fog = new THREE.Fog(0xb8c4ce, 18, 42);
+    scene.fog = new THREE.Fog(0xb8c4ce, 35, 75);
 
     /* Camera stands inside near the back and looks toward the front desk.
        Room shell is Kenney tiles × roomScale (~1.75); depth ~±8.75 after scale. */
     var camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 80);
-    camera.position.set(0.5, 7.2, 7.4);
-    camera.lookAt(0.3, 1.1, -4.5);
+    camera.position.set(12, 19, 20);
+    camera.lookAt(0, 0, 0);
 
     var lights = addLighting(scene, THREE);
 

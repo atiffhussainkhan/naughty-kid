@@ -167,7 +167,7 @@ if (typeof require !== "undefined" && require.main === module) {
   check(phaseB.state.phase === "B" && phaseB.state.beat === 6, "beat 6 from the rear");
 
   var solo = wire.reduce(Object.assign({}, phaseB.state, { beat: 7 }), {
-    type: "beat7Pass",
+    type: "edgeLinePass",
     kids: 1,
     feet: true,
     dropped: false

@@ -1,0 +1,16 @@
+const assert = require('node:assert/strict');
+const session = require('../js/session.js');
+const ui = require('../js/host-ui.js');
+const picks = {prize:'a golden trophy',noisemaker:'bubble wrap',victory:'pop a safe party popper',activity:'reading a big book',stringTarget:"the teacher's desk"};
+const old = {phase:'won',beat:10,round:1,kids:[{id:'kid-1',statue:true},{id:'kid-2'}],picks,finals:{a:true,b:true},phaseA:{done:true},phaseB:{phaseBWon:true},sessionWon:true};
+const snapshot=JSON.stringify(old);const next=session.reduce(old,{type:'restartSession'}).state;
+assert.equal(next.phase,null);assert.equal(next.beat,0);assert.equal(next.round,2);assert.equal(next.kids,2);assert.deepEqual(next.finals,{a:false,b:false});assert.equal(next.phaseA,undefined);assert.equal(next.phaseB,undefined);assert.equal(next.sessionWon,undefined);assert.equal(next.picksLocked,true);assert.notEqual(next.picks,picks);assert.equal(JSON.stringify(old),snapshot);
+assert.equal(session.reduce(null,{type:'startSession',kids:Infinity}).state.phase,null);
+assert.equal(session.viewModel(old).kids,2);
+const started=session.reduce(next,{type:'startSession',kids:2,prize:picks.prize}).state;assert.equal(started.phase,'A');assert.equal(started.round,2);
+const handoff=ui.viewModel({phase:'A',beat:5,finals:{a:true,b:false},picks}).controls;
+assert.ok(handoff.some(a=>a.type==='beginPhaseB'&&a.payload.kidsAtRear===true));assert.ok(!handoff.some(a=>a.type==='beat5Prize'));
+assert.deepEqual(ui.viewModel(old).controls.map(a=>a.type),['restartSession']);
+assert.ok(ui.viewModel({phase:'A',beat:1,picks}).controls.some(a=>a.type==='restartSession'));
+ui.reset(next);assert.equal(ui.viewModel(next).locked,true);assert.ok(ui.viewModel(next).controls.some(a=>a.type==='startPhaseA'));
+console.log('PASS: clean replay, immutable picks, round count, finite kids, phase-B handoff and completed-round controls');

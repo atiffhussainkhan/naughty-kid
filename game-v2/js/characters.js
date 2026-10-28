@@ -14,8 +14,8 @@
   var CLASSROOM = root.CLASSROOM || (root.CLASSROOM = {});
   var TEACHER_FILE = "teacher.glb";
   var KID_FILES = { a: "kid-a.glb", b: "kid-b.glb" };
-  var BACK_Z = 2.4;
-  var DESK_Z = -0.6;
+  var BACK_Z = 6.3;
+  var DESK_Z = -5.8;
   var STEP = 0.45;
   var THREE_MODULE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
   var LOADER_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
@@ -68,7 +68,7 @@
       var keys = Object.keys(kids);
       for (i = 0; i < keys.length && ids.length < 2; i += 1) ids.push(String(keys[i]));
     }
-    if (!ids.length) return ["a", "b"];
+    if (!ids.length) return ["kid-1", "kid-2"];
     if (ids.length === 1) ids.push(ids[0] === "a" ? "b" : "a");
     return ids;
   }
@@ -171,11 +171,12 @@
 
   function placeKid(rig, record, index) {
     var x = index === 0 ? -0.55 : 0.55;
-    rig.group.position.set(x, 0, BACK_Z - spotOf(record) * STEP);
+    rig.target = new root.THREE.Vector3(x, 0, Math.max(DESK_Z + 1, BACK_Z - spotOf(record) * STEP));
+    if (!rig.placed) { rig.group.position.copy(rig.target); rig.placed = true; }
     rig.group.lookAt(0, 0, DESK_Z);
   }
 
-  function plant(model) {
+  function plant(model, role) {
     var THREE = root.THREE;
     var box;
     var minY;
@@ -187,7 +188,7 @@
     size = new THREE.Vector3();
     box.getSize(size);
     if (isFinite(size.y) && size.y > 0.01) {
-      scale = 1.35 / size.y;
+      scale = (role === "teacher" ? 1.75 : 1.35) / size.y;
       model.scale.multiplyScalar(scale);
       model.updateMatrixWorld(true);
       box = new THREE.Box3().setFromObject(model);
@@ -235,7 +236,7 @@
         pivot.name = role === "teacher" ? "teacher" : "kid-" + id;
         pivot.userData.role = role;
         pivot.userData.id = id;
-        plant(model);
+        plant(model, role);
         pivot.add(model);
         scene.add(pivot);
         resolve({
@@ -271,7 +272,13 @@
     if (teacherRig && teacherRig.mixer) teacherRig.mixer.update(dt);
     ids = Object.keys(kidRigs);
     for (i = 0; i < ids.length; i += 1) {
-      if (kidRigs[ids[i]].mixer) kidRigs[ids[i]].mixer.update(dt);
+      var rig = kidRigs[ids[i]];
+      if (rig.target) {
+        var distance = rig.group.position.distanceTo(rig.target);
+        if (distance > 0.01) { rig.group.position.lerp(rig.target, Math.min(1, dt * 5)); applyPose(rig, "walk"); }
+        else { rig.group.position.copy(rig.target); applyPose(rig, pendingKids[ids[i]] || "idle"); }
+      }
+      if (rig.mixer) rig.mixer.update(dt);
     }
   }
 
