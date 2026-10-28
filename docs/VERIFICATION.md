@@ -45,3 +45,7 @@ The verifier does not contact GitHub or deploy the game. Local dependency closur
 - In-app browser at `http://127.0.0.1:4187/game-v2/`: classroom, teacher, two pupils and props render; five radio choices lock, Start Phase A works and Walk advances to Beat 2. No captured console errors. Responsive stacked controls remain accessible.
 - Complete ten-beat paths and replay were verified in the dispatcher tests, not a full manual browser playthrough. Remaining console warnings concern legacy Three.js distribution and multiple Three.js instances in the FBX loader.
 - Character IDs now match session IDs; movement uses interpolated targets. Teacher and pupils have different scales, and the elevated camera exposes both room ends. Asset quality limitations remain as documented in ASSET-AUDIT.md.
+
+## Responsive framing milestone
+
+`node game-v2/tests/camera-fit.cjs` passes 144 projected corners over six viewport ratios and three room scales. It uses the bundled Three.js camera math to verify both screen margins and depth clipping. Existing 10,768 assertions and host-session-flow checks also pass after room-anchor integration.

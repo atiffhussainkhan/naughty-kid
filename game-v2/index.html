@@ -322,6 +322,7 @@
         var usable = anchors && typeof anchors === "object" && anchors.desk;
         var loaded;
         if (!scene) return;
+        if (anchors && anchors.room && view.fitRoom) view.fitRoom(anchors.room);
         if (CLASSROOM.props && typeof CLASSROOM.props.load === "function") {
           try { settle(CLASSROOM.props.load(scene, usable ? anchors : undefined)); } catch (err) { loadError(err); }
         }
@@ -344,6 +345,7 @@
         var width;
         var height;
         if (!view || !view.renderer || !view.camera) return;
+        if (view.resize) { view.resize(); return; }
         canvas = view.renderer.domElement;
         width = canvas.clientWidth || 1;
         height = canvas.clientHeight || 1;

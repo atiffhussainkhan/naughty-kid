@@ -282,7 +282,12 @@
     }
   }
 
-  function load(scene, state) {
+  function load(scene, state, anchors) {
+    if (anchors && anchors.back && anchors.desk && root.THREE) {
+      scene.updateMatrixWorld(true);
+      BACK_Z = anchors.back.getWorldPosition(new root.THREE.Vector3()).z - 0.7;
+      DESK_Z = new root.THREE.Box3().setFromObject(anchors.desk).max.z + 0.8;
+    }
     var ids;
     if (!scene || !root.THREE) return Promise.reject(new Error("THREE scene is not ready"));
     if (loadPromise) return loadPromise;

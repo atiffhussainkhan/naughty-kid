@@ -9,6 +9,32 @@
   var CLASSROOM = root.CLASSROOM || (root.CLASSROOM = {});
   CLASSROOM.modules = CLASSROOM.modules || {};
 
+  function fitCamera(camera, bounds) {
+    var THREE = root.THREE;
+    if (!bounds || bounds.isEmpty()) return;
+    var center = bounds.getCenter(new THREE.Vector3());
+    var direction = new THREE.Vector3(12, 19, 20).normalize();
+    camera.position.copy(center).add(direction);
+    camera.lookAt(center);
+    camera.updateMatrixWorld(true);
+    var inverse = camera.quaternion.clone().invert();
+    var tanY = Math.tan(camera.fov * Math.PI / 360) * 0.90;
+    var tanX = tanY * Math.max(0.1, camera.aspect);
+    var distance = 1;
+    for (var x = 0; x < 2; x++) for (var y = 0; y < 2; y++) for (var z = 0; z < 2; z++) {
+      var point = new THREE.Vector3(x ? bounds.max.x : bounds.min.x,
+        y ? bounds.max.y : bounds.min.y, z ? bounds.max.z : bounds.min.z)
+        .sub(center).applyQuaternion(inverse);
+      distance = Math.max(distance, point.z + Math.abs(point.x) / tanX,
+        point.z + Math.abs(point.y) / tanY);
+    }
+    camera.position.copy(center).addScaledVector(direction, distance);
+    camera.near = 0.1;
+    camera.far = Math.max(100, distance + bounds.getSize(new THREE.Vector3()).length() * 2);
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld(true);
+  }
+
   function mount(canvas) {
     var THREE = root.THREE;
     if (!THREE) throw new Error("THREE is not on the page");
@@ -30,11 +56,10 @@
     scene.background = new THREE.Color(0xb8c4ce);
     scene.fog = new THREE.Fog(0xb8c4ce, 35, 75);
 
-    /* Camera stands inside near the back and looks toward the front desk.
-       Room shell is Kenney tiles × roomScale (~1.75); depth ~±8.75 after scale. */
+    var roomBounds = new THREE.Box3(new THREE.Vector3(-8, 0, -10), new THREE.Vector3(8, 3, 10));
     var camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 80);
     camera.position.set(12, 19, 20);
-    camera.lookAt(0, 0, 0);
+    fitCamera(camera, roomBounds);
 
     var lights = addLighting(scene, THREE);
 
@@ -44,11 +69,19 @@
       camera: camera,
       clock: new THREE.Clock(),
       lights: lights,
+      fitRoom: function (room) {
+        roomBounds = new THREE.Box3().setFromObject(room);
+        fitCamera(camera, roomBounds);
+        scene.fog.near = camera.position.length() + 15;
+        scene.fog.far = scene.fog.near + 60;
+      },
       resize: function () {
         var w = canvas.clientWidth || canvas.width || 1;
         var h = canvas.clientHeight || canvas.height || 1;
         camera.aspect = w / h;
-        camera.updateProjectionMatrix();
+        fitCamera(camera, roomBounds);
+        scene.fog.near = camera.position.length() + 15;
+        scene.fog.far = scene.fog.near + 60;
         renderer.setSize(w, h, false);
       }
     };
@@ -97,7 +130,7 @@
     return { hemi: hemi, fill: fill, key: key, rim: rim, deskLamp: deskLamp };
   }
 
-  CLASSROOM.scene = { mount: mount, addLighting: addLighting };
+  CLASSROOM.scene = { mount: mount, addLighting: addLighting, fitCamera: fitCamera };
   CLASSROOM.modules.scene = {
     mount: mount,
     viewModel: function () {
