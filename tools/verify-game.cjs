@@ -109,7 +109,7 @@ function element(id) {
   const classes = new Set(), events = {};
   return { id, style: {}, dataset: {}, children: [], textContent: '', innerHTML: '', value: '',
     classList: { add: n => classes.add(n), remove: n => classes.delete(n), contains: n => classes.has(n), toggle(n, on) { if (on === undefined ? !classes.has(n) : on) classes.add(n); else classes.delete(n); } },
-    appendChild(child) { this.children.push(child); return child; }, append(...kids) { this.children.push(...kids); }, remove() {}, setAttribute() {}, getAttribute() { return null; },
+    replaceChildren(...kids) { this.children = kids; }, appendChild(child) { this.children.push(child); return child; }, append(...kids) { this.children.push(...kids); }, remove() {}, setAttribute() {}, getAttribute() { return null; },
     addEventListener(type, fn) { (events[type] || (events[type] = [])).push(fn); }, dispatchEvent(e) { (events[e.type] || []).forEach(fn => fn(e)); },
     querySelector() { return element('query'); }, querySelectorAll() { return []; }, getBoundingClientRect() { return { left: 0, top: 0, width: 800, height: 600 }; } };
 }

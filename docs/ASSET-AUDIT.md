@@ -11,3 +11,5 @@ The models used for pupils have adult proportions. Uniform scale does not turn t
 ## Additional verified prop
 
 Integrated exact CC0Tree SM_Flashlight FBX from `cc0tree.zip::cc0tree/All Models/Electronics/SM_Flashlight.fbx`, Gamekit ID `model-770fa174415b8efd`. Existing preview inspected; SHA256 `29fda62cbb272e83afa8cdf34aae0756b32f4e2dee67e84922bfe2d268e9dee8`. Asset and CC0 licence are shipped; local Three FBXLoader added. This replaces the former torch stand-in as primary choice, with the old model retained as load fallback. Browser import is checked separately. Mailbox candidate was indexed but its registered file was missing; no unverified replacement shipped.
+
+Classroom dressing reuses existing self-contained props/desk.glb, props/chair-desk.glb, props/books.glb, props/lamp-table.glb and room/bookcase-open.glb. No new downloads or generated images. Three study desks occupy the left edge; game paths remain clear. Existing provenance limitations above still apply.

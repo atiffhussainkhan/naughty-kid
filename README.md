@@ -16,7 +16,7 @@ Then open **http://127.0.0.1:8080/game-v2/**. Do not serve `game-v2` alone: shar
 
 ## Controls
 
-Choose five round options, lock them and start Phase A with at least two players. The host panel presents the current challenge and available actions. Complete the five Phase A beats, return to the back and begin Phase B. Complete the final five beats to win, then play another round. Movement, teacher state and freeze/send-back rules drive the animated 3D cast. This is a host-operated party game, not a first-person action game.
+Use Play classic setup for a quick start, or choose five round options and lock them. Select a pupil in the player HUD; W/up steps, Space/S/down stops, and mission buttons perform the current interaction. Teacher cues remain host-controlled. The host panel presents the current challenge and available actions. Complete the five Phase A beats, return to the back and begin Phase B. Complete the final five beats to win, then play another round. Movement, teacher state and freeze/send-back rules drive the animated 3D cast. This is a host-operated party game, not a first-person action game.
 
 ## Verify
 

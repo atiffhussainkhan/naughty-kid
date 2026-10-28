@@ -8,9 +8,9 @@ Master repository: /Users/mac/naughty-kid, GitHub atiffhussainkhan/naughty-kid. 
 - Verification: 10,768 dispatcher/static assertions, host-session-flow test and 144 camera-corner projections across six aspect ratios and three scales pass.
 
 ## Next bounded milestones
-1. Add a clear player interaction layer alongside host controls: selected pupil, directional input and touch controls wired to existing movement rules. Inspect movement action contracts first; preserve freeze/send-back rules. Test keyboard handling outside form fields and movement boundaries.
-2. Add clear on-stage feedback for current objective, teacher state and success/failure; perform full manual ten-beat browser playthrough and fix discovered gaps.
-3. Improve classroom dressing and replace verified placeholder assets using small gamekit library queries, recording provenance. Adult-proportioned pupil meshes and special prop substitutes remain known art limitations.
+1. Player layer is implemented: classic quick-start, selectable pupil, W/up movement and Space/S/down stillness, mission buttons, progress and teacher status. Next: make all mission actions visibly animate props and characters, not just state changes. Preserve authored host teacher cues; do not invent automatic punishments.
+2. Mission objectives and teacher HUD are implemented. A full browser ten-beat run through both finales passed. Next: strengthen visible outcome feedback, inspect replay and desktop layout, and verify actual movement visually.
+3. Classroom now includes three side study desks/chairs, books/lamp and a second shelf from existing assets. Replace remaining placeholder assets using small gamekit library queries, recording provenance. Adult-proportioned pupil meshes and special prop substitutes remain known art limitations.
 4. Validate responsive usability, loading/error recovery and a fresh clone launch; publish a final release summary distinguishing host-assisted and autonomous behavior.
 
 ## Continuation protocol

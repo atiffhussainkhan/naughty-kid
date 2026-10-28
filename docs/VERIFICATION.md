@@ -49,3 +49,10 @@ The verifier does not contact GitHub or deploy the game. Local dependency closur
 ## Responsive framing milestone
 
 `node game-v2/tests/camera-fit.cjs` passes 144 projected corners over six viewport ratios and three room scales. It uses the bundled Three.js camera math to verify both screen margins and depth clipping. Existing 10,768 assertions and host-session-flow checks also pass after room-anchor integration.
+
+## Player controls and classroom milestone
+- Dispatcher/static suite: 10,991 assertions pass; player-controls suite: 47 assertions pass.
+- Browser: classic setup, all ten mission actions, Phase A join, Phase B finale and win overlay operated through the new player HUD. No captured console errors. This verifies host-assisted mission progression, not finished animated interaction for every prop.
+- Mobile layout keeps controls below the scene instead of covering it. Scene uses existing desk/chair/books/lamp/bookcase assets; the central and cushion paths stay clear.
+
+Browser cache regression: versioned first-party scripts/styles together after observing a stale session reducer during replay. Fresh-load Restart round now returns to the locked pre-Phase-A setup. Win-overlay replay still needs a fresh-version end-to-end recheck; dispatcher replay assertions pass.

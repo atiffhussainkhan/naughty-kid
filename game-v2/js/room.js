@@ -108,7 +108,9 @@
       loadModel("room/bookcase-open.glb"),
       loadModel("props/desk.glb"),
       loadModel("props/chair-desk.glb"),
-      loadModel("props/whiteboard-panel.glb")
+      loadModel("props/whiteboard-panel.glb"),
+      loadModel("props/books.glb"),
+      loadModel("props/lamp-table.glb")
     ]).then(function (models) {
       var floor = models[0];
       var wall = models[1];
@@ -246,6 +248,35 @@
         0,
         BACK - 0.05 - bookBox.max.z
       ).name = "bookcase";
+
+      // Side study area leaves the shared path and cushion lane unobstructed.
+      var studyArea = new THREE.Group();
+      studyArea.name = "side-study-area";
+      room.add(studyArea);
+      function furnish(model, name, cx, cz, width, elevation, angle) {
+        var item = clone(model);
+        item.rotation.y = angle || 0;
+        var box = new THREE.Box3().setFromObject(item);
+        var size = box.getSize(new THREE.Vector3());
+        var scale = Math.min(width / Math.max(size.x, 0.01), 1.2 / Math.max(size.y, 0.01));
+        item.scale.multiplyScalar(scale);
+        box.setFromObject(item);
+        var center = box.getCenter(new THREE.Vector3());
+        item.position.set(cx - center.x, (elevation || 0) - box.min.y, cz - center.z);
+        item.name = name;
+        enableShadows(item);
+        studyArea.add(item);
+        item.updateMatrixWorld(true);
+        return item;
+      }
+      [-1.8, 0, 1.8].forEach(function (row, index) {
+        var studyDesk = furnish(deskModel, "side-study-desk-" + index, -2.6, row, 1.2);
+        furnish(chairModel, "side-study-chair-" + index, -2.6, row + 0.65, 0.55, 0, Math.PI);
+        var tableTop = new THREE.Box3().setFromObject(studyDesk).max.y / ROOM_SCALE;
+        furnish(models[9], "study-books-" + index, -2.85, row, 0.3, tableTop + 0.01);
+        if (index === 0) furnish(models[10], "study-lamp", -2.35, row - 0.1, 0.22, tableTop + 0.01);
+      });
+      furnish(bookcase, "class-library", 2.2, 4.35, 1.5, 0, Math.PI);
 
       var holding = anchor(room, "holding-cluster");
       holding.position.set(LEFT + 1.4, 0, BACK - 1.2);
