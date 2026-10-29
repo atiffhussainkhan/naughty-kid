@@ -24,7 +24,7 @@
     idle: ["Idle"],
     walk: ["Walk", "Walk_Carry"],
     dance: ["Victory", "Dance", "Cheer"],
-    freeze: ["Idle"]
+    freeze: ["Idle"], sleep: ["SitDown", "Idle"], stir: ["SitDown", "Idle"], laugh: ["SitDown", "Idle"], reading: ["Idle"], typing: ["Idle"]
   };
 
   var teacherRig = null;
@@ -45,7 +45,7 @@
 
   function canon(pose) {
     var name = String(pose || "").replace(/\s+/g, " ").trim().toLowerCase();
-    if (name === "idle" || name === "walk" || name === "dance" || name === "freeze") return name;
+    if (name === "idle" || name === "walk" || name === "dance" || name === "freeze" || name === "sleep" || name === "stir" || name === "laugh" || name === "reading" || name === "typing") return name;
     if (name === "victory" || name === "cheer") return "dance";
     if (name === "statue" || name === "frozen") return "freeze";
     if (name === "walking" || name === "moving") return "walk";
@@ -101,18 +101,43 @@
   }
 
   function poseFromTeacher(state) {
-    var teacher = state && state.teacher;
-    var pose;
-    if (state && state.teacherPose) {
-      pose = canon(state.teacherPose);
-      if (pose) return pose;
+    state = state || {};
+    if (state.laughing === true || state.laughOpen === true) return "laugh";
+    var teacher = state.teacher;
+    if (teacher && typeof teacher === "object") teacher = teacher.posture || teacher.state || teacher.activity;
+    var lower = String(teacher || "").toLowerCase();
+    if (lower.indexOf("laugh") >= 0) return "laugh";
+    if (lower.indexOf("starting") >= 0 || lower.indexOf("stir") >= 0) return "stir";
+    if (lower.indexOf("asleep") >= 0 || lower === "sleep") return "sleep";
+    if (lower.indexOf("typ") >= 0) return "typing";
+    if (lower.indexOf("read") >= 0) return "reading";
+    if (!lower && (!state.phase || state.phase === "A")) return "sleep";
+    return canon(state.teacherPose) || "idle";
+  }
+
+  function presentation(state) {
+    state = state || {};
+    var teacher = state.teacher;
+    var named = String(typeof teacher === "object" && teacher ? teacher.activity || teacher.posture : teacher || "").toLowerCase();
+    var activity = String(state.picks && state.picks.activity || "").toLowerCase();
+    var board = named.indexOf("board") >= 0 || ((state.phase === "B" || state.phase === "won") && (!named || named === "standing") && activity.indexOf("board") >= 0);
+    var investigating = named.indexOf("investigat") >= 0 || named.indexOf("turned") >= 0;
+    return {teacherPose:poseFromTeacher(state), facing:investigating ? "room" : board ? "board" : "room", celebrating:state.phase === "won" || state.sessionWon === true || !!(state.phaseB && state.phaseB.phaseBWon)};
+  }
+
+  function updateRig(rig, dt, now) {
+    if (!rig) return;
+    var head = rig.head;
+    if (head && rig.headOffset) head.rotation.x -= rig.headOffset;
+    rig.headOffset = 0;
+    if (rig.mixer) rig.mixer.update(dt);
+    if (head) {
+      if (rig.pose === "sleep") rig.headOffset = .38 + Math.sin(now * .0012) * .025;
+      if (rig.pose === "stir") rig.headOffset = .15 + Math.sin(now * .004) * .07;
+      if (rig.pose === "laugh") rig.headOffset = -.08 + Math.sin(now * .018) * .12;
+      if (rig.pose === "reading" || rig.pose === "typing") rig.headOffset = .22;
+      head.rotation.x += rig.headOffset;
     }
-    if (typeof teacher === "string") {
-      var lower = teacher.toLowerCase();
-      if (lower.indexOf("laugh") >= 0) return "dance";
-      if (lower.indexOf("asleep") >= 0) return "idle";
-    }
-    return pendingTeacher || "idle";
   }
 
   function spotOf(kid) {
@@ -148,12 +173,12 @@
     action.reset();
     action.fadeIn(0.12);
     action.enabled = true;
-    if (pose === "freeze") {
+    if (pose === "freeze" || pose === "sleep" || pose === "stir" || pose === "laugh") {
       action.setLoop(THREE.LoopOnce, 1);
       action.clampWhenFinished = true;
       action.play();
       action.paused = true;
-      action.time = Math.min(0.2, clip.duration || 0);
+      action.time = pose === "freeze" ? Math.min(0.2, clip.duration || 0) : Math.max(0, (clip.duration || 0) - .001);
     } else {
       action.setLoop(THREE.LoopRepeat, Infinity);
       action.clampWhenFinished = false;
@@ -243,6 +268,8 @@
           role: role,
           id: id,
           group: pivot,
+          head: model.getObjectByName("Head"),
+          headOffset: 0,
           mixer: new THREE.AnimationMixer(model),
           clips: gltf.animations || [],
           action: null,
@@ -269,16 +296,16 @@
     if (!lastTick) lastTick = now;
     dt = Math.min(0.05, (now - lastTick) / 1000);
     lastTick = now;
-    if (teacherRig && teacherRig.mixer) teacherRig.mixer.update(dt);
+    updateRig(teacherRig, dt, now);
     ids = Object.keys(kidRigs);
     for (i = 0; i < ids.length; i += 1) {
       var rig = kidRigs[ids[i]];
       if (rig.target) {
         var distance = rig.group.position.distanceTo(rig.target);
-        if (distance > 0.01) { rig.group.position.lerp(rig.target, Math.min(1, dt * 5)); applyPose(rig, "walk"); }
-        else { rig.group.position.copy(rig.target); applyPose(rig, pendingKids[ids[i]] || "idle"); }
+        if (distance > 0.01 && pendingKids[ids[i]] !== "freeze") { rig.group.position.lerp(rig.target, Math.min(1, dt * 5)); applyPose(rig, "walk"); }
+        else { if (pendingKids[ids[i]] !== "freeze") rig.group.position.copy(rig.target); applyPose(rig, pendingKids[ids[i]] || "idle"); }
       }
-      if (rig.mixer) rig.mixer.update(dt);
+      updateRig(rig, dt, now);
     }
   }
 
@@ -305,9 +332,10 @@
       placeTeacher(teacherRig);
       placeKid(rigs[1], kidRecord(state, rigs[1].id), 0);
       placeKid(rigs[2], kidRecord(state, rigs[2].id), 1);
-      applyPose(teacherRig, pendingTeacher || poseFromTeacher(state));
+      applyPose(teacherRig, poseFromTeacher(state));
       applyPose(rigs[1], pendingKids[rigs[1].id] || poseFromKid(kidRecord(state, rigs[1].id)));
       applyPose(rigs[2], pendingKids[rigs[2].id] || poseFromKid(kidRecord(state, rigs[2].id)));
+      sync(CLASSROOM.state || state || {});
       startLoop();
       return { teacher: teacherRig.group, kids: kidRigs };
     }).catch(function (err) {
@@ -339,11 +367,13 @@
     var i;
     var record;
     if (!state) return;
-    setTeacherPose(poseFromTeacher(state));
+    var visual = presentation(state);
+    setTeacherPose(visual.teacherPose);
+    if (teacherRig) teacherRig.group.lookAt(0, 0, visual.facing === "board" ? DESK_Z - 8 : BACK_Z);
     ids = kidIds(state);
     for (i = 0; i < ids.length; i += 1) {
       record = kidRecord(state, ids[i]);
-      setKidPose(ids[i], poseFromKid(record));
+      setKidPose(ids[i], visual.celebrating ? "dance" : poseFromKid(record));
       if (kidRigs[ids[i]]) placeKid(kidRigs[ids[i]], record, i);
     }
   }
@@ -355,14 +385,15 @@
     for (i = 0; i < ids.length; i += 1) {
       kids.push({
         id: ids[i],
-        pose: pendingKids[ids[i]] || poseFromKid(kidRecord(state, ids[i])),
+        pose: presentation(state).celebrating ? "dance" : poseFromKid(kidRecord(state, ids[i])),
         file: kidFileFor(ids[i], i),
         loaded: !!kidRigs[ids[i]]
       });
     }
     return {
       teacher: {
-        pose: pendingTeacher || poseFromTeacher(state),
+        pose: poseFromTeacher(state),
+        facing: presentation(state).facing,
         file: TEACHER_FILE,
         loaded: !!teacherRig,
         source: "Suit_Female.glb"
@@ -374,6 +405,7 @@
   }
 
   var api = {
+    presentation: presentation,
     load: load,
     setTeacherPose: setTeacherPose,
     setKidPose: setKidPose,

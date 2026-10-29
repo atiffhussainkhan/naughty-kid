@@ -720,6 +720,41 @@
     }
   }
 
+  function syncVisuals(state, scene, dt) {
+    if (!placed || !scene) return;
+    state = state || {};
+    var T = three(), items = placed.items, pb = state.phaseB || {};
+    var teacher = scene.getObjectByName("teacher");
+    var kids = state.kids || [];
+    function actor(id) { return scene.getObjectByName("kid-" + id); }
+    var carrier = actor(kids[0] && kids[0].id);
+    function at(object, x, y, z) {
+      if (!object) return null;
+      object.updateWorldMatrix(true, false);
+      return object.localToWorld(new T.Vector3(x || 0, y || 0, z || 0));
+    }
+    function move(id, destination, arc) {
+      var item = items[id];
+      if (!item) return;
+      if (!item.userData.homePosition) item.userData.homePosition = item.position.clone();
+      var target = destination ? placed.root.worldToLocal(destination.clone()) : item.userData.homePosition.clone();
+      if (!state.phase) { item.position.copy(item.userData.homePosition); item.userData.flight = null; return; }
+      if (arc && destination) {
+        if (!item.userData.flight) item.userData.flight = {from:item.position.clone(), t:0};
+        var flight = item.userData.flight;
+        flight.t = Math.min(1, flight.t + dt * 1.4);
+        item.position.lerpVectors(flight.from, target, flight.t);
+        item.position.y += Math.sin(flight.t * Math.PI) * 1.4;
+      } else { item.position.lerp(target, Math.min(1, dt * 9)); }
+    }
+    move("plush", state.plushOnMat ? at(items["shield-mat"],0,0.15,0) : null, true);
+    move("sticky-note", state.noteOnBack ? at(teacher,0,1.05,-0.22) : null);
+    move("prize", state.prizeClaimed ? at(carrier,0.3,0.85,0.12) : null);
+    move("secret-note", pb.mailbox ? at(items.mailbox,0,0.18,0) : state.phase === "B" ? at(carrier,-0.25,0.85,0) : null);
+    move("sunglasses", pb.glassesHolder && state.beat >= 7 ? at(actor(pb.glassesHolder),0,0.07,0.25) : null);
+    move("flashlight", state.phase === "B" ? at(carrier,0.25,0.85,0.1) : null);
+  }
+
   function viewModel() {
     if (!placed) return { kind: "props", ready: false, count: 0 };
     var list = PROP_IDS.map(function (id) {
@@ -751,6 +786,7 @@
     applyPhaseA: applyPhaseA,
     applyPhaseB: applyPhaseB,
     viewModel: viewModel,
+    syncVisuals: syncVisuals,
     ids: PROP_IDS.slice(),
     files: FILES
   };

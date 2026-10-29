@@ -56,3 +56,6 @@ The verifier does not contact GitHub or deploy the game. Local dependency closur
 - Mobile layout keeps controls below the scene instead of covering it. Scene uses existing desk/chair/books/lamp/bookcase assets; the central and cushion paths stay clear.
 
 Browser cache regression: versioned first-party scripts/styles together after observing a stale session reducer during replay. Fresh-load Restart round now returns to the locked pre-Phase-A setup. Win-overlay replay still needs a fresh-version end-to-end recheck; dispatcher replay assertions pass.
+
+## Animation checkpoint — 29 October 2026
+Character presentation: 28 assertions including real GLB clip availability. Prop actions: carried prize, teacher note, plush landing and replay position reset pass using Three.js geometry with a stub asset loader. Full dispatcher/static suite passes 10,991 assertions. Live browser inspection could not run: CUA reports browser.user unavailable for the existing tab. Chair alignment and visual animation quality remain unverified; checkpoint not published pending that check.

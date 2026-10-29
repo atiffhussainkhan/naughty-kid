@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict');
+const THREE=require('../vendor/three/build/three.min.js');
+global.THREE=THREE;
+THREE.GLTFLoader=class {load(url,done){const scene=new THREE.Group();scene.add(new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.1)));done({scene});}};
+require('../js/props.js');
+(async()=>{
+ const scene=new THREE.Scene();
+ const teacher=new THREE.Group();teacher.name='teacher';teacher.position.set(1,0,-5);scene.add(teacher);
+ const pupil=new THREE.Group();pupil.name='kid-kid-1';pupil.position.set(0,0,3);scene.add(pupil);
+ const loaded=await CLASSROOM.props.load(scene,{});
+ CLASSROOM.props.syncVisuals({},scene,.05);
+ const home=loaded.items.prize.position.clone();
+ const state={phase:'B',kids:[{id:'kid-1'}],prizeClaimed:true,noteOnBack:true,plushOnMat:true,phaseB:{mailbox:true,glassesHolder:'kid-1'},beat:10};
+ for(let i=0;i<100;i++)CLASSROOM.props.syncVisuals(state,scene,.05);
+ assert.ok(loaded.items.prize.position.distanceTo(new THREE.Vector3(.3,.85,3.12))<.001,'prize follows pupil');
+ assert.ok(loaded.items['sticky-note'].position.distanceTo(new THREE.Vector3(1,1.05,-5.22))<.001,'note attaches to teacher');
+ assert.ok(loaded.items.plush.position.distanceTo(loaded.items['shield-mat'].position.clone().add(new THREE.Vector3(0,.15,0)))<.001,'throw settles on mat');
+ CLASSROOM.props.syncVisuals({},scene,.05);
+ assert.ok(loaded.items.prize.position.distanceTo(home)<.001,'replay restores prop');
+ console.log('PASS: carried prize, teacher note, plush landing and replay reset');
+})().catch(e=>{console.error(e);process.exitCode=1;});
