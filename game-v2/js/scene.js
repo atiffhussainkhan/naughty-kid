@@ -10,10 +10,13 @@
   CLASSROOM.modules = CLASSROOM.modules || {};
 
   function fitCamera(camera, bounds) {
+    return frameBounds(camera, bounds, new root.THREE.Vector3(12, 19, 20).normalize());
+  }
+
+  function frameBounds(camera, bounds, direction) {
     var THREE = root.THREE;
     if (!bounds || bounds.isEmpty()) return;
     var center = bounds.getCenter(new THREE.Vector3());
-    var direction = new THREE.Vector3(12, 19, 20).normalize();
     camera.position.copy(center).add(direction);
     camera.lookAt(center);
     camera.updateMatrixWorld(true);
@@ -33,6 +36,23 @@
     camera.far = Math.max(100, distance + bounds.getSize(new THREE.Vector3()).length() * 2);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
+  }
+
+  function playAreaBounds(bounds) {
+    var THREE = root.THREE;
+    if (!bounds || bounds.isEmpty()) return null;
+    var center = bounds.getCenter(new THREE.Vector3());
+    var size = bounds.getSize(new THREE.Vector3());
+    return new THREE.Box3(
+      new THREE.Vector3(center.x - size.x * 0.20, bounds.min.y, bounds.min.z + size.z * 0.06),
+      new THREE.Vector3(center.x + size.x * 0.20, bounds.max.y, bounds.max.z - size.z * 0.06)
+    );
+  }
+
+  function fitPlayCamera(camera, bounds) {
+    var area = playAreaBounds(bounds);
+    if (!area) return;
+    frameBounds(camera, area, new root.THREE.Vector3(4, 11, 16).normalize());
   }
 
   function mount(canvas) {
@@ -58,33 +78,53 @@
 
     var roomBounds = new THREE.Box3(new THREE.Vector3(-8, 0, -10), new THREE.Vector3(8, 3, 10));
     var camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 80);
+    var viewMode = "play";
     camera.position.set(12, 19, 20);
-    fitCamera(camera, roomBounds);
+    fitPlayCamera(camera, roomBounds);
 
     var lights = addLighting(scene, THREE);
 
-    return {
+    function frameView() {
+      if (viewMode === "overview") fitCamera(camera, roomBounds);
+      else fitPlayCamera(camera, roomBounds);
+      scene.fog.near = camera.position.length() + 15;
+      scene.fog.far = scene.fog.near + 60;
+      if (canvas.setAttribute) canvas.setAttribute("data-camera-view", viewMode);
+    }
+
+    var view = {
       renderer: renderer,
       scene: scene,
       camera: camera,
       clock: new THREE.Clock(),
       lights: lights,
+      getViewMode: function () { return viewMode; },
+      setViewMode: function (mode) {
+        if (mode !== "play" && mode !== "overview") return false;
+        viewMode = mode;
+        frameView();
+        if (view.controls && view.controls.update) view.controls.update();
+        return true;
+      },
       fitRoom: function (room) {
-        roomBounds = new THREE.Box3().setFromObject(room);
-        fitCamera(camera, roomBounds);
-        scene.fog.near = camera.position.length() + 15;
-        scene.fog.far = scene.fog.near + 60;
+        var bounds = new THREE.Box3().setFromObject(room);
+        if (bounds.isEmpty()) return;
+        roomBounds = bounds;
+        frameView();
       },
       resize: function () {
         var w = canvas.clientWidth || canvas.width || 1;
         var h = canvas.clientHeight || canvas.height || 1;
         camera.aspect = w / h;
-        fitCamera(camera, roomBounds);
-        scene.fog.near = camera.position.length() + 15;
-        scene.fog.far = scene.fog.near + 60;
+        frameView();
         renderer.setSize(w, h, false);
       }
     };
+    frameView();
+    if (CLASSROOM.cameraControls && typeof CLASSROOM.cameraControls.mount === "function") {
+      view.controls = CLASSROOM.cameraControls.mount(view, canvas);
+    }
+    return view;
   }
 
   function addLighting(scene, THREE) {
@@ -130,7 +170,8 @@
     return { hemi: hemi, fill: fill, key: key, rim: rim, deskLamp: deskLamp };
   }
 
-  CLASSROOM.scene = { mount: mount, addLighting: addLighting, fitCamera: fitCamera };
+  CLASSROOM.scene = { mount: mount, addLighting: addLighting, fitCamera: fitCamera,
+    fitPlayCamera: fitPlayCamera, playAreaBounds: playAreaBounds };
   CLASSROOM.modules.scene = {
     mount: mount,
     viewModel: function () {
