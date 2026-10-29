@@ -29,3 +29,7 @@ node game-v2/tests/host-session-flow.cjs
 node game-v2/tests/camera-fit.cjs
 
 Animation milestone is tested and ready for normal publication. Continue from current HEAD; do not repeat completed browser recovery. Browser rendering evidence and limitations are in docs/VERIFICATION.md. No bulk library rescan or newly generated artwork is needed.
+
+## 29 October — user visual feedback follow-up
+User rejected distant dollhouse view and test-panel presentation. Local checkpoints: 248ac58 gives stage more space, collapses setup, separates teacher cues and preserves action focus; 2acc455 marks selected pupil with a ground ring; 6f24524 updates verification DOM harness. 10,991 entry/static assertions, 47 player controls assertions, 30 character presentation assertions, host flow and prop actions pass. Camera improvement and browser visual check are in progress; do not call these final acceptance.
+Asset follow-up completed: bounded 2023 and part_3 OGA character archive checks found no verified child-proportioned animated model. Anime preview was adult-proportioned and unsuitable. Do not repeat those archive checks. Current stylised cast remains a known gap. Requirement document is docs/classroom-game/design/game-design.md (not root design/game-design.md). Teacher/host controls are intentional in that design; no arbitrary auto-wake timer should be added.
