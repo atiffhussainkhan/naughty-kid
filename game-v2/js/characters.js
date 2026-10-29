@@ -269,6 +269,14 @@
         pivot.userData.id = id;
         plant(model, role);
         pivot.add(model);
+        if (role === "kid") {
+          var marker = new THREE.Mesh(new THREE.RingGeometry(0.38, 0.49, 48), new THREE.MeshBasicMaterial({color:0xffd15a, side:THREE.DoubleSide, depthWrite:false}));
+          marker.name = "selected-player-ring";
+          marker.rotation.x = -Math.PI / 2;
+          marker.position.y = 0.025;
+          marker.visible = false;
+          pivot.add(marker);
+        }
         scene.add(pivot);
         resolve({
           role: role,
@@ -306,6 +314,8 @@
     ids = Object.keys(kidRigs);
     for (i = 0; i < ids.length; i += 1) {
       var rig = kidRigs[ids[i]];
+      var marker = rig.group.getObjectByName("selected-player-ring");
+      if (marker) marker.visible = String(ids[i]) === CLASSROOM.selectedKidId;
       if (rig.target) {
         var distance = rig.group.position.distanceTo(rig.target);
         if (distance > 0.01 && pendingKids[ids[i]] !== "freeze") { rig.group.position.lerp(rig.target, Math.min(1, dt * 5)); applyPose(rig, "walk"); }

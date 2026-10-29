@@ -53,6 +53,7 @@
     function draw(force) {
       var state = getState() || {}, vm = model(state);
       selected = vm.kids.length ? selected % vm.kids.length : 0;
+      C.selectedKidId = vm.active && vm.kids[selected] ? String(vm.kids[selected].id) : null;
       var key = JSON.stringify([vm, selected]);
       if (!force && key === last) return;
       var focus = box.contains(document.activeElement) ? document.activeElement.textContent : null;
