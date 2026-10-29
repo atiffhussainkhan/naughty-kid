@@ -59,3 +59,6 @@ Browser cache regression: versioned first-party scripts/styles together after ob
 
 ## Animation checkpoint — 29 October 2026
 Character presentation: 28 assertions including real GLB clip availability. Prop actions: carried prize, teacher note, plush landing and replay position reset pass using Three.js geometry with a stub asset loader. Full dispatcher/static suite passes 10,991 assertions. Live browser inspection could not run: CUA reports browser.user unavailable for the existing tab. Chair alignment and visual animation quality remain unverified; checkpoint not published pending that check.
+
+## Browser recovery and character correction — 29 October 2026
+The localhost server was restarted and a fresh browser tab loaded successfully. Fixed seated teacher position using the chair bounds and prevented a stale Asleep state from overriding Phase B activity. Full ten-mission classic setup completed through both finales, win overlay and replay to locked pre-Phase-A setup. No captured console errors. Chair placement and seated pose inspected in the rendered scene. This is incremental visual verification, not acceptance of realistic child art or all prank effects. Character-presentation now passes 30 assertions.

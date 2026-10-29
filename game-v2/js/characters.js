@@ -27,6 +27,7 @@
     freeze: ["Idle"], sleep: ["SitDown", "Idle"], stir: ["SitDown", "Idle"], laugh: ["SitDown", "Idle"], reading: ["Idle"], typing: ["Idle"]
   };
 
+  var seatedPosition = null;
   var teacherRig = null;
   var kidRigs = {};
   var pendingTeacher = "idle";
@@ -102,6 +103,10 @@
 
   function poseFromTeacher(state) {
     state = state || {};
+    if (state.phase === "B" || state.phase === "won") {
+      var selected = String(state.picks && state.picks.activity || "").toLowerCase();
+      return selected.indexOf("typ") >= 0 ? "typing" : selected.indexOf("read") >= 0 ? "reading" : "idle";
+    }
     if (state.laughing === true || state.laughOpen === true) return "laugh";
     var teacher = state.teacher;
     if (teacher && typeof teacher === "object") teacher = teacher.posture || teacher.state || teacher.activity;
@@ -120,7 +125,8 @@
     var teacher = state.teacher;
     var named = String(typeof teacher === "object" && teacher ? teacher.activity || teacher.posture : teacher || "").toLowerCase();
     var activity = String(state.picks && state.picks.activity || "").toLowerCase();
-    var board = named.indexOf("board") >= 0 || ((state.phase === "B" || state.phase === "won") && (!named || named === "standing") && activity.indexOf("board") >= 0);
+    var board = named.indexOf("board") >= 0 || ((state.phase === "B" || state.phase === "won") && activity.indexOf("board") >= 0);
+    if (state.phaseB && state.phaseB.doodleWindowOpen) board = true;
     var investigating = named.indexOf("investigat") >= 0 || named.indexOf("turned") >= 0;
     return {teacherPose:poseFromTeacher(state), facing:investigating ? "room" : board ? "board" : "room", celebrating:state.phase === "won" || state.sessionWon === true || !!(state.phaseB && state.phaseB.phaseBWon)};
   }
@@ -314,6 +320,11 @@
       scene.updateMatrixWorld(true);
       BACK_Z = anchors.back.getWorldPosition(new root.THREE.Vector3()).z - 0.7;
       DESK_Z = new root.THREE.Box3().setFromObject(anchors.desk).max.z + 0.8;
+      if (anchors.chair) {
+        seatedPosition = new root.THREE.Box3().setFromObject(anchors.chair).getCenter(new root.THREE.Vector3());
+        seatedPosition.y = 0;
+        seatedPosition.z += 0.3;
+      }
     }
     var ids;
     if (!scene || !root.THREE) return Promise.reject(new Error("THREE scene is not ready"));
@@ -369,6 +380,10 @@
     if (!state) return;
     var visual = presentation(state);
     setTeacherPose(visual.teacherPose);
+    if (teacherRig) {
+      if (seatedPosition && /^(sleep|stir|laugh)$/.test(visual.teacherPose)) teacherRig.group.position.copy(seatedPosition);
+      else teacherRig.group.position.set(0.85, 0, DESK_Z);
+    }
     if (teacherRig) teacherRig.group.lookAt(0, 0, visual.facing === "board" ? DESK_Z - 8 : BACK_Z);
     ids = kidIds(state);
     for (i = 0; i < ids.length; i += 1) {

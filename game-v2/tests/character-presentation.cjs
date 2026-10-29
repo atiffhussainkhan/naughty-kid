@@ -15,4 +15,6 @@ api.sync({teacher:'Laughing for 5 seconds'});eq(api.viewModel({teacher:'Asleep'}
 eq(api.presentation({}).teacherPose,'sleep');
 const repo=path.resolve(__dirname,'../..');
 for(const file of ['teacher.glb','kid-a.glb','kid-b.glb']){const b=fs.readFileSync(path.join(repo,'game-v2/assets/characters',file));const j=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));for(const clip of ['Idle','Walk','Victory','SitDown'])eq(j.animations.some(a=>a.name===clip),true);}
+eq(api.presentation({phase:'B',teacher:'Asleep',picks:{activity:'standing facing a whiteboard'}}).teacherPose,'idle');
+eq(api.presentation({phase:'B',teacher:'Asleep',picks:{activity:'reading a big book'}}).teacherPose,'reading');
 console.log('Character presentation: '+checks+' assertions passed');

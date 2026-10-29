@@ -10,7 +10,7 @@ Master repository: /Users/mac/naughty-kid, GitHub atiffhussainkhan/naughty-kid. 
 ## Latest saved work — 29 October 2026
 Character presentation now uses verified SitDown/Idle/Walk/Victory clips: held sitting plus procedural head nods for sleep/stir/laugh; pupils celebrate on session win; frozen pupils stop interpolating. These are stylised poses, not newly sourced realistic child art. Props now move visibly: plush arcs to mat, prize follows carrier, sticky note follows teacher, secret note goes to mailbox, sunglasses follow feet and flashlight follows carrier. Replay resets prop positions.
 
-Validation: dispatcher/static 10,991 assertions; character-presentation 28 assertions; prop-actions test passes. Browser verification is BLOCKED by CUA reporting `browser.user is unavailable` even after refreshing inventory and reconnecting the known tab. Do not claim current animations visually approved. FIRST NEXT STEP: browser-check loaded animation build, sleep chair alignment, plush arc, carried props, and win/replay; fix visual issues before pushing this local checkpoint to main. Previous published commit remains 44e5cd9.
+Validation update: browser access recovered after restarting the localhost server. On 29 October the complete ten-beat flow, both finales and win-overlay replay passed in a fresh browser tab with no captured console errors. Fixed teacher chair placement and stale Asleep overriding Phase B activity. Dispatcher/static suite 10,991 assertions, character-presentation 30 assertions, prop-actions test pass. Animation work is now cleared for publication as an incremental build, not final visual acceptance. Next: visible flashlight drawing and celebration/silly-string effects, closer camera/player focus, and remaining asset gaps. The teacher remains stylised and some poses procedural; child art is not solved.
 
 Asset search: no verified child-proportioned animated mesh in small child/kids/boy/girl indexed queries. Inspected pack-oga-3d-character-pack and only the 2024 nested bundle filenames; male-base OBJ and nested male/female-face archives, no usable verified child/animation. Next bounded asset check is its 2023 or part_3 bundle, not a repeat of completed searches.
 
@@ -28,4 +28,4 @@ node tools/verify-game.cjs
 node game-v2/tests/host-session-flow.cjs
 node game-v2/tests/camera-fit.cjs
 
-Latest animation milestone is saved as a local Git commit pending browser verification and push. Browser rendering evidence and limitations are in docs/VERIFICATION.md. No bulk library rescan or newly generated artwork is needed.
+Animation milestone is tested and ready for normal publication. Continue from current HEAD; do not repeat completed browser recovery. Browser rendering evidence and limitations are in docs/VERIFICATION.md. No bulk library rescan or newly generated artwork is needed.

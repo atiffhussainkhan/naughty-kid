@@ -318,6 +318,7 @@
         holding: holding,
         checkpoint: checkpoint,
         desk: desk,
+        chair: chairNode,
         whiteboard: whiteboard,
         board: board,
         shadow: shadowSeat,
