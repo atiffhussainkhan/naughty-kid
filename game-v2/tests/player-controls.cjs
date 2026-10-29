@@ -21,3 +21,8 @@ check(controls.keyAction({code:'KeyW',target:{isContentEditable:true}},kid,true)
 globalThis.CLASSROOM.ui={viewModel:()=>({controls:[{type:'kidStep'},{type:'hostSetup'},{type:'beat4Note'},{type:'hostWake',off:true}]})};
 check(controls.model({phase:'A',beat:4}).actions,[{type:'beat4Note'}]);
 console.log(`Player controls: ${n} assertions passed`);
+
+assert.equal(controls.isTeacherCue({type:'hostStir'}),true);
+assert.equal(controls.isTeacherCue({type:'beat8Draw',payload:{openWindow:true}}),true);
+assert.equal(controls.isTeacherCue({type:'beat8Draw',payload:{picture:'hat'}}),false);
+assert.equal(controls.isTeacherCue({type:'beat2Throw',payload:{onMat:true}}),false);

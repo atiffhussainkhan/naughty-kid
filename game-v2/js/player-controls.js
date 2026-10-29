@@ -34,6 +34,9 @@
       actions: (vm.controls || []).filter(function (a) { return ['hostSetup','kidStep','kidStill','restartSession'].indexOf(a.type) === -1 && !a.off && !(a.type === 'startPhaseA' && !state.picks); })
     };
   }
+  function isTeacherCue(action) {
+    return !!(action.host || /^host/.test(action.type) || action.type === 'beat3Eyes' || action.type === 'beat2LaughEnd' || (action.type === 'beat8Draw' && action.payload && (action.payload.openWindow || action.payload.quiet)));
+  }
   function keyAction(event, kid, active) {
     var target = event.target || {};
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName || '')) return null;
@@ -93,8 +96,8 @@
       cues.appendChild(node('summary', 'Teacher cues · host controls'));
       var teacherButtons = node('div', '', 'player-buttons');
       vm.actions.forEach(function (a) {
-        var control = button(a.label, function () { var payload = Object.assign({}, a.payload || {}); if (vm.kids[selected]) payload.id = vm.kids[selected].id; send({type:a.type, payload:payload}); }, a.host ? 'teacher-action' : '');
-        (a.host ? teacherButtons : actions).appendChild(control);
+        var control = button(a.label, function () { var payload = Object.assign({}, a.payload || {}); if (vm.kids[selected]) payload.id = vm.kids[selected].id; send({type:a.type, payload:payload}); }, isTeacherCue(a) ? 'teacher-action' : '');
+        (isTeacherCue(a) ? teacherButtons : actions).appendChild(control);
       });
       box.appendChild(actions);
       if (teacherButtons.childElementCount) { cues.appendChild(teacherButtons); box.appendChild(cues); }
@@ -106,6 +109,6 @@
     root.addEventListener('keydown', keydown); draw(true); frame = root.requestAnimationFrame(tick);
     return {destroy:function () { alive = false; root.cancelAnimationFrame(frame); root.removeEventListener('keydown', keydown); box.remove(); }};
   }
-  C.playerControls = {mount:mount, model:model, keyAction:keyAction};
+  C.playerControls = {mount:mount, model:model, keyAction:keyAction, isTeacherCue:isTeacherCue};
   if (typeof module !== 'undefined' && module.exports) module.exports = C.playerControls;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
