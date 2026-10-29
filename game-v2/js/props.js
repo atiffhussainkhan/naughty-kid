@@ -720,9 +720,43 @@
     }
   }
 
+  function syncCelebration(state, scene, dt) {
+    var T = three();
+    var effect = scene.getObjectByName("classroom-confetti");
+    if (!state.phase) {
+      if (effect) {
+        effect.children.forEach(function (piece) { piece.geometry.dispose(); piece.material.dispose(); });
+        scene.remove(effect);
+      }
+      return;
+    }
+    if (state.finals && state.finals.a && !effect) {
+      effect = new T.Group(); effect.name = "classroom-confetti";
+      var teacher = scene.getObjectByName("teacher");
+      var origin = teacher ? teacher.getWorldPosition(new T.Vector3()) : new T.Vector3();
+      var colors = [0xffce54, 0xfa6b83, 0x53d9d1, 0x9175ee, 0xffffff];
+      for (var i = 0; i < 64; i++) {
+        var piece = new T.Mesh(new T.PlaneGeometry(0.09, 0.045), new T.MeshBasicMaterial({color:colors[i % colors.length], side:T.DoubleSide}));
+        piece.position.copy(origin); piece.position.y += 2.15;
+        var angle = i * 2.39996;
+        piece.userData.velocity = new T.Vector3(Math.cos(angle) * (0.6 + i % 5 * 0.22), 1.6 + i % 7 * 0.16, Math.sin(angle) * (0.6 + i % 5 * 0.22));
+        effect.add(piece);
+      }
+      scene.add(effect);
+    }
+    if (effect) effect.children.forEach(function (piece, i) {
+      if (piece.position.y <= 0.035) { piece.position.y = 0.035; piece.rotation.x = -Math.PI / 2; return; }
+      var velocity = piece.userData.velocity;
+      velocity.y -= dt * 1.5;
+      piece.position.addScaledVector(velocity, dt);
+      piece.rotation.x += dt * (2 + i % 3); piece.rotation.z += dt * 2;
+    });
+  }
+
   function syncVisuals(state, scene, dt) {
     if (!placed || !scene) return;
     state = state || {};
+    syncCelebration(state, scene, Math.min(dt || 0, 0.05));
     var T = three(), items = placed.items, pb = state.phaseB || {};
     var teacher = scene.getObjectByName("teacher");
     var kids = state.kids || [];
