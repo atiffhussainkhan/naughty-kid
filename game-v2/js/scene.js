@@ -79,12 +79,16 @@
     var roomBounds = new THREE.Box3(new THREE.Vector3(-8, 0, -10), new THREE.Vector3(8, 3, 10));
     var camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 80);
     var viewMode = "play";
+    var cutawayWalls = [];
     camera.position.set(12, 19, 20);
     fitPlayCamera(camera, roomBounds);
 
     var lights = addLighting(scene, THREE);
 
     function frameView() {
+      for (var i = 0; i < cutawayWalls.length; i++) {
+        cutawayWalls[i].node.visible = viewMode === "play" ? false : cutawayWalls[i].visible;
+      }
       if (viewMode === "overview") fitCamera(camera, roomBounds);
       else fitPlayCamera(camera, roomBounds);
       scene.fog.near = camera.position.length() + 15;
@@ -109,6 +113,13 @@
       fitRoom: function (room) {
         var bounds = new THREE.Box3().setFromObject(room);
         if (bounds.isEmpty()) return;
+        for (var i = 0; i < cutawayWalls.length; i++) cutawayWalls[i].node.visible = cutawayWalls[i].visible;
+        cutawayWalls = [];
+        room.traverse(function (node) {
+          if (node.name === "wall-back" || node.name === "wall-back-doorway") {
+            cutawayWalls.push({ node: node, visible: node.visible });
+          }
+        });
         roomBounds = bounds;
         frameView();
       },
