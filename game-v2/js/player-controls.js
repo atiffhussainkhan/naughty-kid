@@ -28,7 +28,7 @@
     return {
       beat: beat, active: active, won: state.phase === 'won',
       title: state.phase === 'won' ? 'Mischief accomplished!' : beat ? 'Mission ' + beat + ' / 10' : 'Welcome to NautiKid',
-      objective: transition ? 'Phase A complete! Return to the back and start Phase B.' : state.phase === 'won' ? 'Both finales complete. Ready for another round?' : objectives[beat - 1] || 'Choose five options in the host panel, or start with the classic classroom setup.',
+      objective: transition ? 'Phase A complete! Return to the back and start Phase B.' : state.phase === 'won' ? 'Both finales complete. Ready for another round?' : objectives[beat - 1] || 'Sneak past the teacher, play ten classroom pranks, and celebrate together. Start a classic game or open Class setup.',
       teacher: teacher ? String(teacher).replace(/([a-z])([A-Z])/g, '$1 $2') : 'Waiting for class',
       kids: Array.isArray(state.kids) ? state.kids : [],
       actions: (vm.controls || []).filter(function (a) { return ['hostSetup','kidStep','kidStill','restartSession'].indexOf(a.type) === -1 && !a.off && !(a.type === 'startPhaseA' && !state.picks); })
@@ -55,10 +55,18 @@
       selected = vm.kids.length ? selected % vm.kids.length : 0;
       var key = JSON.stringify([vm, selected]);
       if (!force && key === last) return;
+      var focus = box.contains(document.activeElement) ? document.activeElement.textContent : null;
       last = key; box.replaceChildren();
       var head = node('div', '', 'player-heading');
       head.appendChild(node('strong', vm.title));
       head.appendChild(node('span', 'Teacher: ' + vm.teacher, 'teacher-state'));
+      var setup = button('Class setup', function () {
+        var open = parent.classList.toggle('host-panel-open');
+        setup.setAttribute('aria-expanded', String(open));
+        root.dispatchEvent(new Event('resize'));
+      });
+      setup.setAttribute('aria-expanded', String(parent.classList.contains('host-panel-open')));
+      head.appendChild(setup);
       box.appendChild(head); box.appendChild(node('p', vm.objective, 'player-objective'));
       var meter = document.createElement('progress'); meter.max = 10; meter.value = vm.won ? 10 : Math.max(0, vm.beat - 1); meter.setAttribute('aria-label', 'Completed missions'); box.appendChild(meter);
       var row = node('div', '', 'player-buttons');
@@ -80,8 +88,16 @@
       }
       box.appendChild(row);
       var actions = node('div', '', 'player-mission-actions');
-      vm.actions.forEach(function (a) { actions.appendChild(button(a.label, function () { var payload = Object.assign({}, a.payload || {}); if (vm.kids[selected]) payload.id = vm.kids[selected].id; send({type:a.type, payload:payload}); }, a.host ? 'teacher-action' : '')); });
+      var cues = node('details', '', 'teacher-cues');
+      cues.appendChild(node('summary', 'Teacher cues · host controls'));
+      var teacherButtons = node('div', '', 'player-buttons');
+      vm.actions.forEach(function (a) {
+        var control = button(a.label, function () { var payload = Object.assign({}, a.payload || {}); if (vm.kids[selected]) payload.id = vm.kids[selected].id; send({type:a.type, payload:payload}); }, a.host ? 'teacher-action' : '');
+        (a.host ? teacherButtons : actions).appendChild(control);
+      });
       box.appendChild(actions);
+      if (teacherButtons.childElementCount) { cues.appendChild(teacherButtons); box.appendChild(cues); }
+      if (focus) Array.from(box.querySelectorAll('button')).some(function (b) { if (b.textContent !== focus) return false; if (b.closest('details')) b.closest('details').open = true; b.focus({preventScroll:true}); return true; });
       if (vm.active) box.appendChild(node('small', 'Teacher cues remain host-controlled. W / ↑ step · Space / S freeze. Use mission buttons to interact.'));
     }
     function keydown(e) { var vm = model(getState()), action = keyAction(e, vm.kids[selected], vm.active); if (action) { e.preventDefault(); send(action); } }

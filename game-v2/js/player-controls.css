@@ -7,3 +7,22 @@
   .player-hud{order:1;position:relative;inset:auto;flex:0 0 auto;box-sizing:border-box;width:100%;max-height:29dvh;border-radius:0;padding:10px 14px;margin:0}
   .classroom-ui-dock{order:2;flex:1 1 0;min-height:0;max-height:none}
 }
+
+/* Give the classroom the stage; setup remains available on demand. */
+body:not(.host-panel-open) .classroom-ui-dock{display:none}
+.player-hud{top:auto;bottom:16px;right:16px;left:16px;max-width:760px;max-height:32vh;margin:0 auto;background:#142747ed}
+.host-panel-open .player-hud{right:374px}
+.player-hud button{min-height:44px}
+.player-heading{flex-wrap:wrap}
+.player-heading strong{flex:1}
+.teacher-cues{margin-top:8px;border-top:1px solid #ffffff30;padding-top:8px}
+.teacher-cues summary{cursor:pointer;min-height:28px;color:#dce9f5}
+.player-mission-actions{max-height:none}
+@media(max-width:720px){
+ .classroom-shell > canvas#view{flex:1 1 0;min-height:38dvh;height:auto}
+ .player-hud{position:relative;inset:auto;max-height:40dvh;flex:0 0 auto;max-width:none;border-radius:18px 18px 0 0;margin:0}
+ .host-panel-open .player-hud{right:auto}
+ .host-panel-open .classroom-ui-dock{position:absolute;inset:64px 8px 8px;z-index:6;width:auto;max-height:none;border-radius:16px;box-shadow:0 8px 40px #0008}
+ .host-panel-open .player-hud{z-index:7}
+ .player-hud button{min-height:44px}
+}
