@@ -21,7 +21,7 @@ Asset search: no verified child-proportioned animated mesh in small child/kids/b
 4. Validate responsive usability, loading/error recovery and a fresh clone launch; publish a final release summary distinguishing host-assisted and autonomous behavior.
 
 ## Continuation protocol
-An app heartbeat named Continue NautiKid development resumes this chat every five hours. It does not reset quota. Check usage at start and between milestones; at 10% or less remaining, checkpoint and end the run. Save this file during work and before ending. Commit/push tested milestones without force pushes. Notify for meaningful progress or blockers, not unchanged checks. Stop expanding scope once the above milestones are complete. Manual command: restart NautiKid.
+The automatic development schedule was deleted at the user’s request. It remains OFF. Resume only on user instruction; do not recreate the schedule without permission. Check usage at start and between milestones; at 10% or less remaining, checkpoint and end the run. Save this file during work and before ending. Commit/push tested milestones without force pushes. Notify for meaningful progress or blockers, not unchanged checks. Stop expanding scope once the above milestones are complete. Manual command: restart NautiKid.
 
 ## Checks
 node tools/verify-game.cjs
@@ -37,3 +37,7 @@ Asset follow-up completed: bounded 2023 and part_3 OGA character archive checks 
 ### Saved visual milestone — 29 October, afternoon
 Commits 7ba72ae and db684c3 add default closer Play camera, Overview toggle, and reversible rear-wall cutaway. ecb7ca5 separates all teacher cues consistently. 1189a03 adds first-finale falling confetti with replay cleanup. Browser verified classic start, pupil step control, mission1->2, visible cutaway and separated teacher controls at ~598px width. Current camera is clearer but still stylised and not professional/final acceptance. Selected-player ring visibility needs further visual inspection against the floor. New full verification passes11,211 assertions; camera, host flow, prop/replay and player tests pass. Screenshot viewed via browser but saving its bytes was sandbox-blocked; no saved screenshot artifact claimed.
 Next: inspect selected marker/floor height; complete visible flashlight drawing and silly-string effects; visually run all ten beats and both finales with new camera, including desktop/portrait; source suitable verified child art (2023/part_3 search exhausted). Preserve human teacher cues specified by design. Local commits contain all work; no GitHub push performed in this visual milestone. Reload http://127.0.0.1:4187/game-v2/ (cache tag20261029-playview2). Start-NautiKid.command remains the repeatable launcher.
+
+
+## 30 October checkpoint
+Saved d3cd73e and d641bb6: Play camera follows selected pupil; Overview stays fixed; actors are planted on measured floor height so selection ring and feet are visible. Browser verified close framing/ring, classic start and mission1–4 host-driven flow. Camera follow projection tested for readable pupil size and stable Overview. This is still host-assisted, not a finished autonomous professional game. Additional bounded student/school asset queries returned zero indexed matches; index is stale, so do not claim absence from the full library. No suitable new child art was imported.
