@@ -102,6 +102,17 @@
       camera: camera,
       clock: new THREE.Clock(),
       lights: lights,
+      updateFocus: function (state, dt) {
+        if (viewMode !== "play" || !state || !state.phase) return;
+        var id = CLASSROOM.selectedKidId || (state.kids && state.kids[0] && state.kids[0].id);
+        var actor = scene.getObjectByName("kid-" + id);
+        if (!actor) return;
+        var target = actor.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.9, -1.2));
+        var desired = target.clone().add(new THREE.Vector3(4, 5, 8));
+        camera.position.lerp(desired, 1 - Math.exp(-Math.max(0, dt) * 4));
+        camera.lookAt(target);
+        camera.updateMatrixWorld(true);
+      },
       getViewMode: function () { return viewMode; },
       setViewMode: function (mode) {
         if (mode !== "play" && mode !== "overview") return false;

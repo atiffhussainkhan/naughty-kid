@@ -17,6 +17,7 @@
   var BACK_Z = 6.3;
   var DESK_Z = -5.8;
   var STEP = 0.45;
+  var FLOOR_Y = 0;
   var THREE_MODULE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
   var LOADER_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 
@@ -196,13 +197,13 @@
   }
 
   function placeTeacher(rig) {
-    rig.group.position.set(0.85, 0, DESK_Z);
+    rig.group.position.set(0.85, FLOOR_Y, DESK_Z);
     rig.group.lookAt(0, 0, BACK_Z);
   }
 
   function placeKid(rig, record, index) {
     var x = index === 0 ? -0.55 : 0.55;
-    rig.target = new root.THREE.Vector3(x, 0, Math.max(DESK_Z + 1, BACK_Z - spotOf(record) * STEP));
+    rig.target = new root.THREE.Vector3(x, FLOOR_Y, Math.max(DESK_Z + 1, BACK_Z - spotOf(record) * STEP));
     if (!rig.placed) { rig.group.position.copy(rig.target); rig.placed = true; }
     rig.group.lookAt(0, 0, DESK_Z);
   }
@@ -326,13 +327,14 @@
   }
 
   function load(scene, state, anchors) {
+    if (anchors && anchors.floor && root.THREE) FLOOR_Y = new root.THREE.Box3().setFromObject(anchors.floor).max.y + 0.015;
     if (anchors && anchors.back && anchors.desk && root.THREE) {
       scene.updateMatrixWorld(true);
       BACK_Z = anchors.back.getWorldPosition(new root.THREE.Vector3()).z - 0.7;
       DESK_Z = new root.THREE.Box3().setFromObject(anchors.desk).max.z + 0.8;
       if (anchors.chair) {
         seatedPosition = new root.THREE.Box3().setFromObject(anchors.chair).getCenter(new root.THREE.Vector3());
-        seatedPosition.y = 0;
+        seatedPosition.y = FLOOR_Y;
         seatedPosition.z += 0.3;
       }
     }
@@ -392,7 +394,7 @@
     setTeacherPose(visual.teacherPose);
     if (teacherRig) {
       if (seatedPosition && /^(sleep|stir|laugh)$/.test(visual.teacherPose)) teacherRig.group.position.copy(seatedPosition);
-      else teacherRig.group.position.set(0.85, 0, DESK_Z);
+      else teacherRig.group.position.set(0.85, FLOOR_Y, DESK_Z);
     }
     if (teacherRig) teacherRig.group.lookAt(0, 0, visual.facing === "board" ? DESK_Z - 8 : BACK_Z);
     ids = kidIds(state);
