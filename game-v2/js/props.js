@@ -1,6 +1,7 @@
 /* Named classroom props — 3D placement. Classic script.
    CLASSROOM.props.load(scene, anchors). Exactly 22 named props.
-   Meshes only from game-v2/assets/props/ (Image library packs).
+   Prop models from game-v2/assets/props/ (Image library packs).
+   Light outlines, beams, confetti and string strands are procedural effects.
    Missing art = labeled placeholder. No cardboard-as-mailbox.
    Phase A props stay for Phase B (root.userData.staysForPhaseB). */
 (function (root) {
@@ -70,6 +71,26 @@
 
   var placed = null;
   var templates = {};
+
+  function disposeEffect(group) {
+    if (!group) return;
+    var geometries = [], materials = [];
+    group.traverse(function (node) {
+      if (node.geometry && geometries.indexOf(node.geometry) < 0) { geometries.push(node.geometry); node.geometry.dispose(); }
+      var list = node.material ? (Array.isArray(node.material) ? node.material : [node.material]) : [];
+      list.forEach(function (material) { if (materials.indexOf(material) < 0) { materials.push(material); material.dispose(); } });
+    });
+    if (group.parent) group.parent.remove(group);
+  }
+
+  function clearActionEffects() {
+    if (!placed) return;
+    disposeEffect(placed.drawingEffect);
+    disposeEffect(placed.stringEffect);
+    placed.drawingEffect = placed.stringEffect = null;
+    placed.items.shadow.visible = placed.shadowVisible;
+    delete placed.items.shadow.userData.drawing;
+  }
 
   function three() {
     return root.THREE;
@@ -403,6 +424,7 @@
     if (!T || !scene || typeof scene.add !== "function") {
       return Promise.resolve({ ok: false, gap: "scene" });
     }
+    clearActionEffects();
     if (placed && placed.root && placed.root.parent) placed.root.parent.remove(placed.root);
     templates = {};
 
@@ -595,6 +617,8 @@
       spots: spots,
       under: under,
       picks: picks,
+      deskAnchor: anchors && anchors.desk || desk,
+      shadowVisible: shadow.visible,
       ids: PROP_IDS.slice()
     };
 
@@ -680,11 +704,6 @@
     if (id === "shadow" && mark.drawing) {
       group.visible = true;
       group.userData.drawing = mark.drawing;
-      var label = group.children.filter(function (c) { return c.userData && c.userData.kind === "label"; })[0];
-      if (label) {
-        group.remove(label);
-        group.add(labeledMesh(mark.drawing === "ears" || mark.drawing === "giant-ears" ? "Giant ears" : "Hat", [0.7, 1.1, 0.04]));
-      }
     }
     group.userData.staysForPhaseB = true;
     return group;
@@ -718,6 +737,125 @@
     if (src.shadowDrawing) {
       markProp("shadow", { drawing: src.shadowDrawing, visible: true });
     }
+  }
+
+  function effectGroup(scene, name) {
+    var group = new (three().Group)();
+    group.name = name;
+    group.userData.kind = "procedural-effect";
+    scene.add(group);
+    return group;
+  }
+
+  function stroke(parent, name, points, color, radius) {
+    var T = three(), path = new T.CurvePath();
+    for (var i = 1; i < points.length; i++) path.add(new T.LineCurve3(points[i - 1], points[i]));
+    var mesh = new T.Mesh(new T.TubeGeometry(path, 48, radius || .018, 6, false),
+      new T.MeshBasicMaterial({ color: color, toneMapped: false }));
+    mesh.name = name;
+    parent.add(mesh);
+    return mesh;
+  }
+
+  function syncFlashlight(state, scene) {
+    var T = three(), pb = state.phaseB || {};
+    var picture = Object.prototype.hasOwnProperty.call(pb, "picture") ? pb.picture : placed.items.shadow.userData.drawing;
+    if (picture === "giant-ears" || picture === "giant ears") picture = "ears";
+    if (picture !== "hat" && picture !== "ears") picture = null;
+    var active = (state.phase === "B" || state.phase === "won") && state.beat >= 8 && (pb.doodleWindowOpen === true || !!picture);
+    var effect = placed.drawingEffect;
+    if (!active) {
+      if (effect) effect.visible = false;
+      placed.items.shadow.visible = placed.shadowVisible;
+      return;
+    }
+    if (!effect || effect.userData.picture !== picture) {
+      disposeEffect(effect);
+      effect = placed.drawingEffect = effectGroup(scene, "classroom-flashlight-drawing");
+      effect.userData.picture = picture;
+      var target = worldOf(placed.items.shadow, vec(1.2, .7, -1.4));
+      target.y += .35; target.z += .045;
+      effect.userData.target = target.clone();
+      var glyph = new T.Group(); glyph.name = "flashlight-projection";
+      glyph.position.copy(scene.worldToLocal(target.clone())); effect.add(glyph);
+      if (picture === "hat") {
+        stroke(glyph, "flashlight-hat-brim", [vec(-.34, 0, 0), vec(.34, 0, 0)], 0xffef8a);
+        stroke(glyph, "flashlight-hat-crown", [vec(-.23, 0, 0), vec(-.18, .3, 0), vec(.18, .3, 0), vec(.23, 0, 0)], 0xffef8a);
+      }
+      if (picture === "ears") [-1, 1].forEach(function (side) {
+        var points = [];
+        for (var n = 0; n <= 32; n++) {
+          var angle = n / 32 * Math.PI * 2;
+          points.push(vec(side * .3 + Math.cos(angle) * .16, -.06 + Math.sin(angle) * .24, 0));
+        }
+        stroke(glyph, side < 0 ? "flashlight-ear-left" : "flashlight-ear-right", points, 0xffef8a);
+      });
+      var beam = new T.Mesh(new T.ConeGeometry(1, 1, 24, 1, true),
+        new T.MeshBasicMaterial({color:0xffed9c,transparent:true,opacity:.10,depthWrite:false,side:T.DoubleSide,toneMapped:false}));
+      beam.name = "flashlight-beam"; effect.add(beam);
+      var spot = new T.Mesh(new T.CircleGeometry(.27, 32),
+        new T.MeshBasicMaterial({color:0xffefbd,transparent:true,opacity:.16,depthWrite:false,side:T.DoubleSide,toneMapped:false}));
+      spot.name = "flashlight-spot"; spot.position.copy(glyph.position); spot.position.z -= .008; effect.add(spot);
+    }
+    effect.visible = true;
+    placed.items.shadow.visible = false;
+    var from = scene.worldToLocal(worldOf(placed.items.flashlight, vec(0, 1, 0)));
+    var to = scene.worldToLocal(effect.userData.target.clone());
+    var direction = from.clone().sub(to), length = direction.length();
+    var cone = effect.getObjectByName("flashlight-beam");
+    cone.visible = length > .001;
+    if (cone.visible) {
+      cone.position.copy(from).add(to).multiplyScalar(.5);
+      cone.quaternion.setFromUnitVectors(vec(0, 1, 0), direction.normalize());
+      cone.scale.set(.27, length, .27);
+    }
+  }
+
+  function syncString(state, scene, dt) {
+    var T = three(), pb = state.phaseB || {};
+    var records = Array.isArray(pb.landings) ? pb.landings.filter(function (landing) { return landing && (landing.target === "desk" || landing.target === "shoes"); }).slice(0, 24) : [];
+    if (!records.length || state.beat !== 10 || (state.phase !== "B" && state.phase !== "won")) return;
+    var signature = JSON.stringify(records), effect = placed.stringEffect;
+    if (!effect || effect.userData.signature !== signature) {
+      disposeEffect(effect);
+      effect = placed.stringEffect = effectGroup(scene, "classroom-silly-string");
+      effect.userData.signature = signature; effect.userData.age = 0;
+      effect.userData.landings = records.length;
+      records.forEach(function (landing, index) {
+        var deposit = new T.Group(); deposit.name = "string-deposit-" + index; deposit.userData.target = landing.target;
+        var center, width, depth;
+        if (landing.target === "desk") {
+          var bounds = new T.Box3().setFromObject(placed.deskAnchor);
+          if (!bounds.isEmpty()) {
+            center = bounds.getCenter(new T.Vector3()); center.y = bounds.max.y + .025;
+            var size = bounds.getSize(new T.Vector3()); width = Math.max(.35, Math.min(1.5, size.x)); depth = Math.max(.25, Math.min(.8, size.z));
+          } else { center = worldOf(placed.items.desk, vec(0, 0, -1.1)).add(vec(0, .8, 0)); width = 1.1; depth = .6; }
+        } else {
+          var teacher = scene.getObjectByName("teacher");
+          center = teacher ? teacher.localToWorld(vec(0, .11, .18)) : worldOf(placed.items.shoes, vec(.2, .1, -.62));
+          width = .6; depth = .28;
+        }
+        deposit.position.copy(scene.worldToLocal(center)); effect.add(deposit);
+        var colors = [0xff74bd, 0x5ee4ce, 0xffdf6b];
+        for (var strand = 0; strand < 6; strand++) {
+          var points = [];
+          for (var p = 0; p <= 32; p++) {
+            var t = p / 32;
+            points.push(vec((t - .5) * width, .009 + strand * .002,
+              Math.sin(t * Math.PI * 5 + strand + index) * depth * .2 + (strand - 2.5) * depth * .1));
+          }
+          stroke(deposit, "landed-string-" + strand, points, colors[(strand + index) % colors.length], .012);
+        }
+      });
+      var last = effect.children[effect.children.length - 1].position.clone();
+      var origin = scene.worldToLocal(worldOf(placed.items["silly-string"], vec(0, 1, 0)));
+      var middle = origin.clone().lerp(last, .5); middle.y += .35;
+      var stream = new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(origin, middle, last), 32, .013, 6, false),
+        new T.MeshBasicMaterial({color:0xff74bd,toneMapped:false}));
+      stream.name = "silly-string-spray"; effect.add(stream);
+    }
+    effect.userData.age += dt;
+    effect.getObjectByName("silly-string-spray").visible = effect.userData.age < .7;
   }
 
   function syncCelebration(state, scene, dt) {
@@ -756,6 +894,20 @@
   function syncVisuals(state, scene, dt) {
     if (!placed || !scene) return;
     state = state || {};
+    dt = typeof dt === "number" && isFinite(dt) ? Math.max(0, Math.min(dt, .05)) : 0;
+    var changedRound = placed.visualRound != null && state.round != null && placed.visualRound !== state.round;
+    if (!state.phase || changedRound) {
+      clearActionEffects();
+      if (changedRound) {
+        disposeEffect(scene.getObjectByName("classroom-confetti"));
+        Object.keys(placed.items).forEach(function (id) {
+          var item = placed.items[id];
+          if (item.userData.homePosition) item.position.copy(item.userData.homePosition);
+          item.userData.flight = null;
+        });
+      }
+    }
+    if (state.round != null) placed.visualRound = state.round;
     syncCelebration(state, scene, Math.min(dt || 0, 0.05));
     var T = three(), items = placed.items, pb = state.phaseB || {};
     var teacher = scene.getObjectByName("teacher");
@@ -786,7 +938,11 @@
     move("prize", state.prizeClaimed ? at(carrier,0.3,0.85,0.12) : null);
     move("secret-note", pb.mailbox ? at(items.mailbox,0,0.18,0) : state.phase === "B" ? at(carrier,-0.25,0.85,0) : null);
     move("sunglasses", pb.glassesHolder && state.beat >= 7 ? at(actor(pb.glassesHolder),0,0.07,0.25) : null);
-    move("flashlight", state.phase === "B" ? at(carrier,0.25,0.85,0.1) : null);
+    var phaseB = state.phase === "B" || state.phase === "won";
+    move("flashlight", phaseB ? at(carrier,0.25,0.85,0.1) : null);
+    move("silly-string", phaseB ? at(carrier,-0.25,0.85,0.1) : null);
+    syncFlashlight(state, scene);
+    syncString(state, scene, dt);
   }
 
   function viewModel() {
